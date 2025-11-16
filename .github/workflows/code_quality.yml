@@ -1,0 +1,42 @@
+name: code quality
+on: 
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # https://github.com/golangci/golangci-lint-action
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.6.1
+
+  # https://github.com/vladopajic/go-test-coverage
+  coverage:
+    name: test coverage
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-go@v3
+    
+    - name: generate test coverage
+      run: GOTOOLCHAIN=go1.25.4+auto go test ./... -coverprofile=./tools/cover.out -covermode=atomic ./...
+
+    - name: check test coverage
+      uses: vladopajic/go-test-coverage@v2
+      with:
+        config: ./tools/.testcoverage.yml
