@@ -1,0 +1,12 @@
+profile: tools/cover.out
+
+threshold:
+  file: 70
+  package: 80
+  total: 90
+
+exclude:
+  paths:
+    - mock
+
+force-annotation-comment: true
