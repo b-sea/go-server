@@ -3,7 +3,6 @@ package server
 import (
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"github.com/rs/zerolog"
 )
@@ -43,12 +42,12 @@ func (s *Server) healthCheckHandler(recorder Recorder) http.Handler {
 		result := struct {
 			Status       string            `json:"status"`
 			Version      string            `json:"version,omitempty"`
-			Uptime       time.Duration     `json:"uptime"`
+			Uptime       string            `json:"uptime"`
 			Dependencies map[string]string `json:"dependencies,omitempty"`
 		}{
 			Status:       healthyStatus,
 			Version:      s.version,
-			Uptime:       s.Uptime(),
+			Uptime:       s.Uptime().String(),
 			Dependencies: make(map[string]string, 0),
 		}
 

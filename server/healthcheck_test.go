@@ -36,7 +36,7 @@ func TestServerHealth(t *testing.T) {
 			checker:    nil,
 			verbose:    true,
 			version:    "",
-			result:     "{\"status\":\"healthy\",\"uptime\":0}\n",
+			result:     "{\"status\":\"healthy\",\"uptime\":\"0s\"}\n",
 			statusCode: http.StatusOK,
 		},
 		"healthy with dependencies": {
@@ -50,7 +50,7 @@ func TestServerHealth(t *testing.T) {
 			checker:    &mock.HealthCheck{},
 			verbose:    true,
 			version:    "",
-			result:     "{\"status\":\"healthy\",\"uptime\":0,\"dependencies\":{\"test\":\"healthy\"}}\n",
+			result:     "{\"status\":\"healthy\",\"uptime\":\"0s\",\"dependencies\":{\"test\":\"healthy\"}}\n",
 			statusCode: http.StatusOK,
 		},
 		"unhealthy": {
@@ -64,14 +64,14 @@ func TestServerHealth(t *testing.T) {
 			checker:    &mock.HealthCheck{Err: errors.New("something bad")},
 			verbose:    true,
 			version:    "",
-			result:     "{\"status\":\"unhealthy\",\"uptime\":0,\"dependencies\":{\"test\":\"something bad\"}}\n",
+			result:     "{\"status\":\"unhealthy\",\"uptime\":\"0s\",\"dependencies\":{\"test\":\"something bad\"}}\n",
 			statusCode: http.StatusInternalServerError,
 		},
 		"with version": {
 			checker:    nil,
 			verbose:    true,
 			version:    "v1.2.3.test",
-			result:     "{\"status\":\"healthy\",\"version\":\"v1.2.3.test\",\"uptime\":0}\n",
+			result:     "{\"status\":\"healthy\",\"version\":\"v1.2.3.test\",\"uptime\":\"0s\"}\n",
 			statusCode: http.StatusOK,
 		},
 	}
