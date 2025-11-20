@@ -22,6 +22,7 @@ type Server struct {
 	router       *mux.Router
 	http         *http.Server
 	healthChecks map[string]HealthChecker
+	startedAt    time.Time
 	log          zerolog.Logger
 	version      string
 }
@@ -37,6 +38,7 @@ func New(log zerolog.Logger, recorder Recorder, options ...Option) *Server {
 			WriteTimeout:      defaultTimeout,
 		},
 		healthChecks: make(map[string]HealthChecker),
+		startedAt:    time.Time{},
 		log:          log,
 		version:      "",
 	}
@@ -81,6 +83,15 @@ func (s *Server) Version() string {
 	return s.version
 }
 
+// Uptime is the amount of time the server has beeen running.
+func (s *Server) Uptime() time.Duration {
+	if s.startedAt.IsZero() {
+		return 0
+	}
+
+	return time.Since(s.startedAt)
+}
+
 // Addr returns the server address.
 func (s *Server) Addr() string {
 	return s.http.Addr
@@ -103,6 +114,8 @@ func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 // Start the Server.
 func (s *Server) Start() error {
 	s.log.Info().Str("addr", s.http.Addr).Msg("starting server")
+
+	s.startedAt = time.Now()
 
 	if err := s.http.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return err //nolint: wrapcheck
