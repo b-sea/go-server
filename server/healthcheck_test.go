@@ -18,66 +18,86 @@ import (
 func TestServerHealth(t *testing.T) {
 	type testCase struct {
 		checker    server.HealthChecker
+		verbose    bool
 		version    string
 		result     string
 		statusCode int
 	}
 
 	tests := map[string]testCase{
-		"healthy no details": {
+		"healthy no dependencies": {
+			checker:    nil,
+			verbose:    false,
+			version:    "",
+			result:     "",
+			statusCode: http.StatusOK,
+		},
+		"verbose healthy no dependencies": {
+			checker:    nil,
+			verbose:    true,
+			version:    "",
+			result:     "{\"status\":\"healthy\",\"uptime\":0}\n",
+			statusCode: http.StatusOK,
+		},
+		"healthy with dependencies": {
 			checker:    &mock.HealthCheck{},
+			verbose:    false,
 			version:    "",
-			result:     "{\"status\":\"healthy\",\"services\":{\"test\":{\"status\":\"healthy\"}}}\n",
+			result:     "",
 			statusCode: http.StatusOK,
 		},
-		"healthy with details": {
-			checker: &mock.HealthCheck{
-				Result: "extra info",
-			},
+		"verbose healthy with dependencies": {
+			checker:    &mock.HealthCheck{},
+			verbose:    true,
 			version:    "",
-			result:     "{\"status\":\"healthy\",\"services\":{\"test\":{\"status\":\"healthy\",\"details\":\"extra info\"}}}\n",
+			result:     "{\"status\":\"healthy\",\"uptime\":0,\"dependencies\":{\"test\":\"healthy\"}}\n",
 			statusCode: http.StatusOK,
 		},
-		"unhealthy no marshal": {
-			checker: &mock.HealthCheck{
-				Err: errors.New("some random error"),
-			},
+		"unhealthy": {
+			checker:    &mock.HealthCheck{Err: errors.New("something bad")},
+			verbose:    false,
 			version:    "",
-			result:     "{\"status\":\"unhealthy\",\"services\":{\"test\":{\"status\":\"unhealthy\",\"details\":\"some random error\"}}}\n",
+			result:     "",
 			statusCode: http.StatusInternalServerError,
 		},
-		"unhealthy with marshal": {
-			checker: &mock.HealthCheck{
-				Err: &mock.MarshaledError{Data: "special error"},
-			},
+		"verbose unhealthy": {
+			checker:    &mock.HealthCheck{Err: errors.New("something bad")},
+			verbose:    true,
 			version:    "",
-			result:     "{\"status\":\"unhealthy\",\"services\":{\"test\":{\"status\":\"unhealthy\",\"details\":{\"whoops\":\"special error\"}}}}\n",
+			result:     "{\"status\":\"unhealthy\",\"uptime\":0,\"dependencies\":{\"test\":\"something bad\"}}\n",
 			statusCode: http.StatusInternalServerError,
 		},
 		"with version": {
-			checker:    &mock.HealthCheck{},
+			checker:    nil,
+			verbose:    true,
 			version:    "v1.2.3.test",
-			result:     "{\"status\":\"healthy\",\"version\":\"v1.2.3.test\",\"services\":{\"test\":{\"status\":\"healthy\"}}}\n",
+			result:     "{\"status\":\"healthy\",\"version\":\"v1.2.3.test\",\"uptime\":0}\n",
 			statusCode: http.StatusOK,
 		},
 	}
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
+			options := []server.Option{
+				server.SetVersion(test.version),
+			}
+			if test.checker != nil {
+				options = append(options, server.AddHealthCheck("test", test.checker))
+			}
+
 			testServer := httptest.NewServer(
 				server.New(
 					zerolog.Nop(), mock.NewNoOp(),
-					server.SetVersion(test.version),
-					server.AddHealthCheck("test", test.checker),
+					options...,
 				),
 			)
 
-			request, _ := http.NewRequestWithContext(
-				context.Background(),
-				http.MethodGet,
-				fmt.Sprintf("%s/health", testServer.URL),
-				nil,
-			)
+			endpoint := fmt.Sprintf("%s/health", testServer.URL)
+			if test.verbose {
+				endpoint += "?verbose"
+			}
+
+			request, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, nil)
 			request.Close = true
 
 			response, err := http.DefaultClient.Do(request)
