@@ -15,7 +15,7 @@ import (
 
 const (
 	defaultPort    = 5000
-	defaultTimeout = 10 * time.Second
+	defaultTimeout = 5 * time.Second
 )
 
 // Server is a supply-run API web server.
@@ -46,9 +46,9 @@ func New(log zerolog.Logger, recorder Recorder, options ...Option) *Server {
 		version:      "",
 	}
 
-	server.router.Use(server.telemetryMiddleware(recorder))
 	options = append(
 		options,
+		AddMiddleware(server.telemetryMiddleware(recorder)),
 		AddHandler(
 			"/ping",
 			func() http.HandlerFunc {

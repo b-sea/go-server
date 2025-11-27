@@ -30,7 +30,7 @@ func TestSetReadTimeout(t *testing.T) {
 
 	testServer = server.New(zerolog.Nop(), mock.NewNoOp())
 	server.SetReadTimeout(0)(testServer)
-	assert.Equal(t, 10*time.Second, testServer.ReadTimeout())
+	assert.Equal(t, 5*time.Second, testServer.ReadTimeout())
 }
 
 func TestSetWriteTimeout(t *testing.T) {
@@ -40,5 +40,5 @@ func TestSetWriteTimeout(t *testing.T) {
 
 	testServer = server.New(zerolog.Nop(), mock.NewNoOp())
 	server.SetWriteTimeout(0)(testServer)
-	assert.Equal(t, 10*time.Second, testServer.WriteTimeout())
+	assert.Equal(t, 5*time.Second, testServer.WriteTimeout())
 }
