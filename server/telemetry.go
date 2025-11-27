@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/lithammer/shortuuid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 )
@@ -37,7 +36,7 @@ func (w *telemetryWriter) Write(p []byte) (int, error) {
 	return w.ResponseWriter.Write(p) //nolint: wrapcheck
 }
 
-func telemetryMiddleware(log zerolog.Logger, recorder Recorder) mux.MiddlewareFunc {
+func (s *Server) telemetryMiddleware(recorder Recorder) mux.MiddlewareFunc {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			start := time.Now()
@@ -54,20 +53,20 @@ func telemetryMiddleware(log zerolog.Logger, recorder Recorder) mux.MiddlewareFu
 			}
 
 			defer func() {
-				panicValue := recover()
-				if panicValue != nil {
-					asErr, ok := panicValue.(error)
+				panicked := recover()
+				if panicked != nil {
+					err, ok := panicked.(error)
 					if !ok {
-						asErr = fmt.Errorf("%v", panicValue) //nolint: err113
+						err = fmt.Errorf("%v", panicked) //nolint: err113
 					}
 
 					hijack.WriteHeader(http.StatusInternalServerError)
-					log.Error().Stack().Err(errors.Wrap(asErr, "http")).Send()
+					s.log.Error().Stack().Err(errors.Wrap(err, "http")).Send()
 				}
 
 				duration := time.Since(start)
 
-				log.Info().
+				s.log.Info().
 					Str("method", request.Method).
 					Str("url", request.URL.RequestURI()).
 					Str("user_agent", request.UserAgent()).
@@ -81,13 +80,13 @@ func telemetryMiddleware(log zerolog.Logger, recorder Recorder) mux.MiddlewareFu
 			}()
 
 			// Add a correlation ID
-			correlationID := shortuuid.New()
+			correlationID := s.newCorrelationID()
 			hijack.Header().Add("Correlation-ID", correlationID)
-			log.UpdateContext(func(c zerolog.Context) zerolog.Context {
+			s.log.UpdateContext(func(c zerolog.Context) zerolog.Context {
 				return c.Str("correlation_id", correlationID)
 			})
 
-			next.ServeHTTP(hijack, request.WithContext(log.WithContext(request.Context())))
+			next.ServeHTTP(hijack, request.WithContext(s.log.WithContext(request.Context())))
 		})
 	}
 }

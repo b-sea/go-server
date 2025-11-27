@@ -59,6 +59,13 @@ func SetWriteTimeout(duration time.Duration) Option {
 	}
 }
 
+// WithCustomCorrelationID defines a custom Correlation ID generator.
+func WithCustomCorrelationID(fn func() string) Option {
+	return func(server *Server) {
+		server.newCorrelationID = fn
+	}
+}
+
 // AddHealthCheck adds a sub system to include during server healthchecks.
 func AddHealthCheck(name string, checker HealthChecker) Option {
 	return func(server *Server) {

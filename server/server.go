@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/rs/xid"
 	"github.com/rs/zerolog"
 )
 
@@ -19,18 +20,20 @@ const (
 
 // Server is a supply-run API web server.
 type Server struct {
-	router       *mux.Router
-	http         *http.Server
-	healthChecks map[string]HealthChecker
-	startedAt    time.Time
-	log          zerolog.Logger
-	version      string
+	newCorrelationID func() string
+	router           *mux.Router
+	http             *http.Server
+	healthChecks     map[string]HealthChecker
+	startedAt        time.Time
+	log              zerolog.Logger
+	version          string
 }
 
 // New creates a new Server.
 func New(log zerolog.Logger, recorder Recorder, options ...Option) *Server {
 	server := &Server{
-		router: mux.NewRouter(),
+		newCorrelationID: func() string { return xid.New().String() },
+		router:           mux.NewRouter(),
 		http: &http.Server{
 			Addr:              fmt.Sprintf(":%d", defaultPort),
 			ReadTimeout:       defaultTimeout,
@@ -43,7 +46,7 @@ func New(log zerolog.Logger, recorder Recorder, options ...Option) *Server {
 		version:      "",
 	}
 
-	server.router.Use(telemetryMiddleware(log, recorder))
+	server.router.Use(server.telemetryMiddleware(recorder))
 	options = append(
 		options,
 		AddHandler(

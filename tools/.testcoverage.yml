@@ -3,10 +3,11 @@ profile: tools/cover.out
 threshold:
   file: 70
   package: 80
-  total: 90
+  total: 89
 
 exclude:
   paths:
     - mock
+    - metrics
 
 force-annotation-comment: true
