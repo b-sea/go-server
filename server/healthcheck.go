@@ -76,7 +76,7 @@ func (s *Server) healthCheckHandler(recorder Recorder) http.Handler {
 			recorder.ObserveHealth(health.name, health.err == nil)
 		}
 
-		zerolog.Ctx(request.Context()).Info().Interface("health", result).Msg("healthcheck")
+		zerolog.Ctx(request.Context()).Info().Interface("health", result).Msg("health check")
 
 		if !request.URL.Query().Has(verboseParam) {
 			return

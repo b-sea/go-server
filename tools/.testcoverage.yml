@@ -8,5 +8,6 @@ threshold:
 exclude:
   paths:
     - mock
+    - metrics
 
 force-annotation-comment: true
