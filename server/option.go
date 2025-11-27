@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"slices"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 // Option is a creation option for a Server.
@@ -77,8 +79,12 @@ func AddHealthCheck(name string, checker HealthChecker) Option {
 // AddHandler adds an HTTP hander to the Server.
 func AddHandler(path string, handler http.Handler, methods ...string) Option {
 	return func(server *Server) {
+		handle := server.router.Handle(path, handler)
+
 		if len(methods) == 0 {
 			server.log.Debug().Str("path", path).Msg("route registered")
+
+			return
 		}
 
 		slices.Sort(methods)
@@ -87,6 +93,13 @@ func AddHandler(path string, handler http.Handler, methods ...string) Option {
 			server.log.Debug().Str("method", methods[i]).Str("path", path).Msg("route registered")
 		}
 
-		server.router.Handle(path, handler).Methods(methods...)
+		handle.Methods(methods...)
+	}
+}
+
+// AddMiddleware adds middleware to the Server.
+func AddMiddleware(middleware mux.MiddlewareFunc) Option {
+	return func(server *Server) {
+		server.router.Use(middleware)
 	}
 }

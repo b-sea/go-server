@@ -23,20 +23,38 @@ func WithGroupedCodes() PrometheusOption {
 	}
 }
 
+// WithRegisterer sets a custom Prometheus registerer.
+func WithRegisterer(registerer prometheus.Registerer) PrometheusOption {
+	return func(p *Prometheus) {
+		p.registerer = registerer
+	}
+}
+
 var _ server.Recorder = (*Prometheus)(nil)
 
 // Prometheus records metrics with Prometheus.
 type Prometheus struct {
 	groupCodes      bool
+	registerer      prometheus.Registerer
+	healthCheck     *prometheus.GaugeVec
 	requestDuration *prometheus.HistogramVec
 	responseSize    *prometheus.HistogramVec
-	healthCheck     *prometheus.GaugeVec
 }
 
 // NewPrometheus creates a new Prometheus recorder.
 func NewPrometheus(namespace string, options ...PrometheusOption) *Prometheus {
 	recorder := &Prometheus{
 		groupCodes: false,
+		registerer: prometheus.DefaultRegisterer,
+		healthCheck: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: namespace,
+				Subsystem: subsystem,
+				Name:      "health_check",
+				Help:      "Server Healthiness",
+			},
+			[]string{"dependency"},
+		),
 		requestDuration: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Namespace: namespace,
@@ -55,20 +73,15 @@ func NewPrometheus(namespace string, options ...PrometheusOption) *Prometheus {
 			},
 			[]string{"method", "path", "code"},
 		),
-		healthCheck: prometheus.NewGaugeVec(
-			prometheus.GaugeOpts{
-				Namespace: namespace,
-				Subsystem: subsystem,
-				Name:      "health_check",
-				Help:      "Server Healthiness",
-			},
-			[]string{"dependency"},
-		),
 	}
 
 	for _, option := range options {
 		option(recorder)
 	}
+
+	_ = recorder.registerer.Register(recorder.healthCheck)
+	_ = recorder.registerer.Register(recorder.requestDuration)
+	_ = recorder.registerer.Register(recorder.responseSize)
 
 	return recorder
 }
@@ -76,16 +89,6 @@ func NewPrometheus(namespace string, options ...PrometheusOption) *Prometheus {
 // Handler returns an http handler for Prometheus.
 func (p *Prometheus) Handler() http.Handler {
 	return promhttp.Handler()
-}
-
-// ObserveRequestDuration updates the HTTP request duration metric.
-func (p *Prometheus) ObserveRequestDuration(method string, path string, code int, duration time.Duration) {
-	p.requestDuration.WithLabelValues(method, path, p.formatStatusCode(code)).Observe(duration.Seconds())
-}
-
-// ObserveResponseSize updates the HTTP response size metric.
-func (p *Prometheus) ObserveResponseSize(method string, path string, code int, bytes int64) {
-	p.responseSize.WithLabelValues(method, path, p.formatStatusCode(code)).Observe(float64(bytes))
 }
 
 // ObserveHealth checks the health of services.
@@ -96,6 +99,16 @@ func (p *Prometheus) ObserveHealth(service string, isHealthy bool) {
 	}
 
 	p.healthCheck.WithLabelValues(service).Set(value)
+}
+
+// ObserveRequestDuration updates the HTTP request duration metric.
+func (p *Prometheus) ObserveRequestDuration(method string, path string, code int, duration time.Duration) {
+	p.requestDuration.WithLabelValues(method, path, p.formatStatusCode(code)).Observe(duration.Seconds())
+}
+
+// ObserveResponseSize updates the HTTP response size metric.
+func (p *Prometheus) ObserveResponseSize(method string, path string, code int, bytes int64) {
+	p.responseSize.WithLabelValues(method, path, p.formatStatusCode(code)).Observe(float64(bytes))
 }
 
 func (p *Prometheus) formatStatusCode(code int) string {
