@@ -83,6 +83,7 @@ func AddHandler(path string, handler http.Handler, methods ...string) Option {
 
 		if len(methods) == 0 {
 			server.log.Debug().Str("path", path).Msg("route registered")
+
 			return
 		}
 
