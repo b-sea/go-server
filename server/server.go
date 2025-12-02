@@ -20,20 +20,22 @@ const (
 
 // Server is a supply-run API web server.
 type Server struct {
-	newCorrelationID func() string
-	router           *mux.Router
-	http             *http.Server
-	healthChecks     map[string]HealthChecker
-	startedAt        time.Time
-	log              zerolog.Logger
-	version          string
+	readCorrelationHeader bool
+	newCorrelationID      func() string
+	router                *mux.Router
+	http                  *http.Server
+	healthChecks          map[string]HealthChecker
+	startedAt             time.Time
+	log                   zerolog.Logger
+	version               string
 }
 
 // New creates a new Server.
 func New(log zerolog.Logger, recorder Recorder, options ...Option) *Server {
 	server := &Server{
-		newCorrelationID: func() string { return xid.New().String() },
-		router:           mux.NewRouter(),
+		readCorrelationHeader: false,
+		newCorrelationID:      func() string { return xid.New().String() },
+		router:                mux.NewRouter(),
 		http: &http.Server{
 			Addr:              fmt.Sprintf(":%d", defaultPort),
 			ReadTimeout:       defaultTimeout,
@@ -130,6 +132,8 @@ func (s *Server) Start() error {
 // Stop the Server.
 func (s *Server) Stop() error {
 	s.log.Info().Str("addr", s.http.Addr).Msg("stopping server")
+
+	s.startedAt = time.Time{}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()

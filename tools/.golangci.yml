@@ -3,11 +3,6 @@ version: "2"
 linters:
   default: all
 
-  exclusions:
-    paths:
-      # Skip mocks completely
-      - mock
-
   disable:
    - wsl
    - depguard

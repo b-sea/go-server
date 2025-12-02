@@ -43,12 +43,12 @@ func (s *Server) healthCheckHandler(recorder Recorder) http.Handler {
 		result := struct {
 			Status       string            `json:"status"`
 			Version      string            `json:"version,omitempty"`
-			Uptime       string            `json:"uptime"`
+			Uptime       time.Duration     `json:"uptime"`
 			Dependencies map[string]string `json:"dependencies,omitempty"`
 		}{
 			Status:       healthyStatus,
 			Version:      s.version,
-			Uptime:       s.Uptime().Round(time.Second).String(),
+			Uptime:       s.Uptime(),
 			Dependencies: make(map[string]string, 0),
 		}
 

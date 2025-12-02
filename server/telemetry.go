@@ -10,6 +10,8 @@ import (
 	"github.com/rs/zerolog"
 )
 
+const correlationHeader = "Correlation-ID"
+
 // Recorder defines functions for tracking HTTP-based metrics.
 type Recorder interface {
 	Handler() http.Handler
@@ -79,9 +81,18 @@ func (s *Server) telemetryMiddleware(recorder Recorder) mux.MiddlewareFunc {
 				recorder.ObserveResponseSize(request.Method, path, hijack.StatusCode, int64(hijack.Size))
 			}()
 
-			// Add a correlation ID
-			correlationID := s.newCorrelationID()
-			hijack.Header().Add("Correlation-ID", correlationID)
+			// Ensure the correlation ID is set up and passed through
+			correlationID := ""
+
+			if s.readCorrelationHeader {
+				correlationID = request.Header.Get(correlationHeader)
+			}
+
+			if correlationID == "" {
+				correlationID = s.newCorrelationID()
+			}
+
+			hijack.Header().Add(correlationHeader, correlationID)
 			s.log.UpdateContext(func(c zerolog.Context) zerolog.Context {
 				return c.Str("correlation_id", correlationID)
 			})

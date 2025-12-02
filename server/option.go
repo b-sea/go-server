@@ -61,6 +61,13 @@ func SetWriteTimeout(duration time.Duration) Option {
 	}
 }
 
+// ReadCorrelationHeader will allow the service to read a correlation ID from a request header.
+func ReadCorrelationHeader() Option {
+	return func(server *Server) {
+		server.readCorrelationHeader = true
+	}
+}
+
 // WithCustomCorrelationID defines a custom Correlation ID generator.
 func WithCustomCorrelationID(fn func() string) Option {
 	return func(server *Server) {
