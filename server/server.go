@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/rs/xid"
 	"github.com/rs/zerolog"
 )
 
@@ -34,7 +34,7 @@ type Server struct {
 func New(log zerolog.Logger, recorder Recorder, options ...Option) *Server {
 	server := &Server{
 		readCorrelationHeader: false,
-		newCorrelationID:      func() string { return xid.New().String() },
+		newCorrelationID:      func() string { return uuid.NewString() },
 		router:                mux.NewRouter(),
 		http: &http.Server{
 			Addr:              fmt.Sprintf(":%d", defaultPort),

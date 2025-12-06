@@ -149,3 +149,13 @@ func (s *Server) myHandler() http.Handler {
     })
 }
 ```
+
+Additionally, every request is logged with the following log fields:
+
+* correlation_id
+* user_agent
+* method
+* url
+* status_code
+* duration_ms
+* response_byes
