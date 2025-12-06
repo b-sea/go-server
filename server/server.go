@@ -34,7 +34,7 @@ type Server struct {
 func New(log zerolog.Logger, recorder Recorder, options ...Option) *Server {
 	server := &Server{
 		readCorrelationHeader: false,
-		newCorrelationID:      func() string { return uuid.NewString() },
+		newCorrelationID:      uuid.NewString,
 		router:                mux.NewRouter(),
 		http: &http.Server{
 			Addr:              fmt.Sprintf(":%d", defaultPort),

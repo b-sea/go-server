@@ -15,8 +15,8 @@ const correlationHeader = "Correlation-Id"
 // Recorder defines functions for tracking HTTP-based metrics.
 type Recorder interface {
 	Handler() http.Handler
-	ObserveRequestDuration(method string, path string, code int, duration time.Duration)
-	ObserveResponseSize(method string, path string, code int, bytes int64)
+	ObserveHTTPRequestDuration(method string, path string, code int, duration time.Duration)
+	ObserveHTTPResponseSize(method string, path string, code int, bytes int64)
 }
 
 type telemetryWriter struct {
@@ -76,8 +76,8 @@ func (s *Server) telemetryMiddleware(recorder Recorder) mux.MiddlewareFunc {
 					Int("response_bytes", hijack.Size).
 					Msg("request complete")
 
-				recorder.ObserveRequestDuration(request.Method, path, hijack.StatusCode, duration)
-				recorder.ObserveResponseSize(request.Method, path, hijack.StatusCode, int64(hijack.Size))
+				recorder.ObserveHTTPRequestDuration(request.Method, path, hijack.StatusCode, duration)
+				recorder.ObserveHTTPResponseSize(request.Method, path, hijack.StatusCode, int64(hijack.Size))
 			}()
 
 			// Ensure the correlation ID is set up and passed through

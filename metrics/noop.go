@@ -14,8 +14,8 @@ func (r *NoOp) Handler() http.Handler {
 	return http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})
 }
 
-// ObserveRequestDuration records the duration of an HTTP request.
-func (r *NoOp) ObserveRequestDuration(string, string, int, time.Duration) {}
+// ObserveHTTPRequestDuration records the duration of an HTTP request.
+func (r *NoOp) ObserveHTTPRequestDuration(string, string, int, time.Duration) {}
 
-// ObserveResponseSize records how large an HTTP response is.
-func (r *NoOp) ObserveResponseSize(string, string, int, int64) {}
+// ObserveHTTPResponseSize records how large an HTTP response is.
+func (r *NoOp) ObserveHTTPResponseSize(string, string, int, int64) {}
