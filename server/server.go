@@ -24,7 +24,7 @@ type Server struct {
 	newCorrelationID      func() string
 	router                *mux.Router
 	http                  *http.Server
-	healthChecks          map[string]HealthChecker
+	healthDependencies    map[string]HealthChecker
 	startedAt             time.Time
 	log                   zerolog.Logger
 	version               string
@@ -42,10 +42,10 @@ func New(log zerolog.Logger, recorder Recorder, options ...Option) *Server {
 			ReadHeaderTimeout: defaultTimeout,
 			WriteTimeout:      defaultTimeout,
 		},
-		healthChecks: make(map[string]HealthChecker),
-		startedAt:    time.Time{},
-		log:          log,
-		version:      "",
+		healthDependencies: make(map[string]HealthChecker),
+		startedAt:          time.Time{},
+		log:                log,
+		version:            "",
 	}
 
 	options = append(
@@ -60,7 +60,7 @@ func New(log zerolog.Logger, recorder Recorder, options ...Option) *Server {
 			}(),
 			http.MethodGet,
 		),
-		AddHandler("/health", server.healthCheckHandler(recorder), http.MethodGet),
+		AddHandler("/health", server.healthCheckHandler(), http.MethodGet),
 		AddHandler(
 			"/metrics",
 			func() http.HandlerFunc {

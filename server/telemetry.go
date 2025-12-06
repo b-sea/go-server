@@ -10,12 +10,11 @@ import (
 	"github.com/rs/zerolog"
 )
 
-const correlationHeader = "Correlation-ID"
+const correlationHeader = "Correlation-Id"
 
 // Recorder defines functions for tracking HTTP-based metrics.
 type Recorder interface {
 	Handler() http.Handler
-	ObserveHealth(name string, isHealthy bool)
 	ObserveRequestDuration(method string, path string, code int, duration time.Duration)
 	ObserveResponseSize(method string, path string, code int, bytes int64)
 }

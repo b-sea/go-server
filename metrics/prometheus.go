@@ -36,7 +36,6 @@ var _ server.Recorder = (*Prometheus)(nil)
 type Prometheus struct {
 	groupCodes      bool
 	registerer      prometheus.Registerer
-	healthCheck     *prometheus.GaugeVec
 	requestDuration *prometheus.HistogramVec
 	responseSize    *prometheus.HistogramVec
 }
@@ -46,15 +45,6 @@ func NewPrometheus(namespace string, options ...PrometheusOption) *Prometheus {
 	recorder := &Prometheus{
 		groupCodes: false,
 		registerer: prometheus.DefaultRegisterer,
-		healthCheck: prometheus.NewGaugeVec(
-			prometheus.GaugeOpts{
-				Namespace: namespace,
-				Subsystem: subsystem,
-				Name:      "health_check",
-				Help:      "Server Healthiness",
-			},
-			[]string{"dependency"},
-		),
 		requestDuration: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Namespace: namespace,
@@ -79,7 +69,6 @@ func NewPrometheus(namespace string, options ...PrometheusOption) *Prometheus {
 		option(recorder)
 	}
 
-	_ = recorder.registerer.Register(recorder.healthCheck)
 	_ = recorder.registerer.Register(recorder.requestDuration)
 	_ = recorder.registerer.Register(recorder.responseSize)
 
@@ -89,16 +78,6 @@ func NewPrometheus(namespace string, options ...PrometheusOption) *Prometheus {
 // Handler returns an http handler for Prometheus.
 func (p *Prometheus) Handler() http.Handler {
 	return promhttp.Handler()
-}
-
-// ObserveHealth checks the health of services.
-func (p *Prometheus) ObserveHealth(service string, isHealthy bool) {
-	value := float64(1)
-	if !isHealthy {
-		value = 0
-	}
-
-	p.healthCheck.WithLabelValues(service).Set(value)
 }
 
 // ObserveRequestDuration updates the HTTP request duration metric.

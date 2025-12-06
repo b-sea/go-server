@@ -3,7 +3,6 @@ package server_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -29,60 +28,52 @@ func (m *HealthCheck) HealthCheck() error {
 
 func TestServerHealth(t *testing.T) {
 	type testCase struct {
-		checker    server.HealthChecker
-		verbose    bool
-		version    string
+		url        string
+		option     server.Option
 		result     string
 		statusCode int
 	}
 
 	tests := map[string]testCase{
 		"healthy no dependencies": {
-			checker:    nil,
-			verbose:    false,
-			version:    "",
+			url:        "/health",
+			option:     nil,
 			result:     "",
 			statusCode: http.StatusOK,
 		},
-		"verbose healthy no dependencies": {
-			checker:    nil,
-			verbose:    true,
-			version:    "",
+		"healthy verbose no dependencies": {
+			url:        "/health?verbose",
+			option:     nil,
 			result:     "{\"status\":\"healthy\",\"uptime\":0}\n",
 			statusCode: http.StatusOK,
 		},
 		"healthy with dependencies": {
-			checker:    &HealthCheck{},
-			verbose:    false,
-			version:    "",
+			url:        "/health",
+			option:     server.AddHealthDependency("sub-system", &HealthCheck{}),
 			result:     "",
 			statusCode: http.StatusOK,
 		},
-		"verbose healthy with dependencies": {
-			checker:    &HealthCheck{},
-			verbose:    true,
-			version:    "",
-			result:     "{\"status\":\"healthy\",\"uptime\":0,\"dependencies\":{\"test\":\"healthy\"}}\n",
+		"healthy verbose with dependencies": {
+			url:        "/health?verbose",
+			option:     server.AddHealthDependency("sub-system", &HealthCheck{}),
+			result:     "{\"status\":\"healthy\",\"uptime\":0,\"dependencies\":{\"sub-system\":\"healthy\"}}\n",
 			statusCode: http.StatusOK,
 		},
 		"unhealthy": {
-			checker:    &HealthCheck{Err: errors.New("something bad")},
-			verbose:    false,
-			version:    "",
+			url:        "/health",
+			option:     server.AddHealthDependency("sub-system", &HealthCheck{Err: errors.New("something bad")}),
 			result:     "",
 			statusCode: http.StatusInternalServerError,
 		},
-		"verbose unhealthy": {
-			checker:    &HealthCheck{Err: errors.New("something bad")},
-			verbose:    true,
-			version:    "",
-			result:     "{\"status\":\"unhealthy\",\"uptime\":0,\"dependencies\":{\"test\":\"something bad\"}}\n",
+		"unhealthy verbose": {
+			url:        "/health?verbose",
+			option:     server.AddHealthDependency("sub-system", &HealthCheck{Err: errors.New("something bad")}),
+			result:     "{\"status\":\"unhealthy\",\"uptime\":0,\"dependencies\":{\"sub-system\":\"something bad\"}}\n",
 			statusCode: http.StatusInternalServerError,
 		},
 		"with version": {
-			checker:    nil,
-			verbose:    true,
-			version:    "v1.2.3.test",
+			url:        "/health?verbose",
+			option:     server.SetVersion("v1.2.3.test"),
 			result:     "{\"status\":\"healthy\",\"version\":\"v1.2.3.test\",\"uptime\":0}\n",
 			statusCode: http.StatusOK,
 		},
@@ -90,25 +81,14 @@ func TestServerHealth(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			options := []server.Option{
-				server.SetVersion(test.version),
-			}
-			if test.checker != nil {
-				options = append(options, server.AddHealthCheck("test", test.checker))
+			options := []server.Option{}
+			if test.option != nil {
+				options = append(options, test.option)
 			}
 
-			testServer := httptest.NewServer(
-				server.New(
-					zerolog.Nop(), &metrics.NoOp{},
-					options...,
-				),
-			)
+			testServer := httptest.NewServer(server.New(zerolog.Nop(), &metrics.NoOp{}, options...))
 
-			endpoint := fmt.Sprintf("%s/health", testServer.URL)
-			if test.verbose {
-				endpoint += "?verbose"
-			}
-
+			endpoint := testServer.URL + "/" + test.url
 			request, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, nil)
 			request.Close = true
 
@@ -122,6 +102,78 @@ func TestServerHealth(t *testing.T) {
 
 			assert.Equal(t, test.statusCode, response.StatusCode)
 			assert.Equal(t, "application/json", response.Header.Get("Content-Type"))
+			assert.Equal(t, test.result, string(body))
+
+			testServer.Close()
+		})
+	}
+}
+
+func TestDependencyHealth(t *testing.T) {
+	type testCase struct {
+		url         string
+		option      server.Option
+		result      string
+		statusCode  int
+		contentType string
+	}
+
+	tests := map[string]testCase{
+		"healthy": {
+			url:         "/health/sub-system",
+			option:      server.AddHealthDependency("sub-system", &HealthCheck{}),
+			result:      "",
+			statusCode:  http.StatusOK,
+			contentType: "application/json",
+		},
+		"healthy verbose": {
+			url:         "/health/sub-system?verbose",
+			option:      server.AddHealthDependency("sub-system", &HealthCheck{}),
+			result:      "\"healthy\"\n",
+			statusCode:  http.StatusOK,
+			contentType: "application/json",
+		},
+		"unhealthy": {
+			url:         "/health/sub-system",
+			option:      server.AddHealthDependency("sub-system", &HealthCheck{Err: errors.New("something bad")}),
+			result:      "",
+			statusCode:  http.StatusInternalServerError,
+			contentType: "application/json",
+		},
+		"unhealthy verbose": {
+			url:         "/health/sub-system?verbose",
+			option:      server.AddHealthDependency("sub-system", &HealthCheck{Err: errors.New("something bad")}),
+			result:      "\"something bad\"\n",
+			statusCode:  http.StatusInternalServerError,
+			contentType: "application/json",
+		},
+		"not found": {
+			url:         "/health/different",
+			option:      server.AddHealthDependency("sub-system", &HealthCheck{}),
+			result:      "404 page not found\n",
+			statusCode:  http.StatusNotFound,
+			contentType: "text/plain; charset=utf-8",
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			testServer := httptest.NewServer(server.New(zerolog.Nop(), &metrics.NoOp{}, test.option))
+
+			endpoint := testServer.URL + "/" + test.url
+			request, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, nil)
+			request.Close = true
+
+			response, err := http.DefaultClient.Do(request)
+			assert.NoError(t, err)
+
+			body, err := io.ReadAll(response.Body)
+			assert.NoError(t, err)
+
+			assert.NoError(t, response.Body.Close())
+
+			assert.Equal(t, test.statusCode, response.StatusCode)
+			assert.Equal(t, test.contentType, response.Header.Get("Content-Type"))
 			assert.Equal(t, test.result, string(body))
 
 			testServer.Close()
