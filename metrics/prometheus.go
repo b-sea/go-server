@@ -34,10 +34,10 @@ var _ server.Recorder = (*Prometheus)(nil)
 
 // Prometheus records metrics with Prometheus.
 type Prometheus struct {
-	groupCodes      bool
-	registerer      prometheus.Registerer
-	requestDuration *prometheus.HistogramVec
-	responseSize    *prometheus.HistogramVec
+	groupCodes          bool
+	registerer          prometheus.Registerer
+	httpRequestDuration *prometheus.HistogramVec
+	httpResponseSize    *prometheus.HistogramVec
 }
 
 // NewPrometheus creates a new Prometheus recorder.
@@ -45,7 +45,7 @@ func NewPrometheus(namespace string, options ...PrometheusOption) *Prometheus {
 	recorder := &Prometheus{
 		groupCodes: false,
 		registerer: prometheus.DefaultRegisterer,
-		requestDuration: prometheus.NewHistogramVec(
+		httpRequestDuration: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Namespace: namespace,
 				Subsystem: subsystem,
@@ -54,7 +54,7 @@ func NewPrometheus(namespace string, options ...PrometheusOption) *Prometheus {
 			},
 			[]string{"method", "path", "code"},
 		),
-		responseSize: prometheus.NewHistogramVec(
+		httpResponseSize: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Namespace: namespace,
 				Subsystem: subsystem,
@@ -69,8 +69,8 @@ func NewPrometheus(namespace string, options ...PrometheusOption) *Prometheus {
 		option(recorder)
 	}
 
-	_ = recorder.registerer.Register(recorder.requestDuration)
-	_ = recorder.registerer.Register(recorder.responseSize)
+	_ = recorder.registerer.Register(recorder.httpRequestDuration)
+	_ = recorder.registerer.Register(recorder.httpResponseSize)
 
 	return recorder
 }
@@ -80,14 +80,14 @@ func (p *Prometheus) Handler() http.Handler {
 	return promhttp.Handler()
 }
 
-// ObserveRequestDuration updates the HTTP request duration metric.
-func (p *Prometheus) ObserveRequestDuration(method string, path string, code int, duration time.Duration) {
-	p.requestDuration.WithLabelValues(method, path, p.formatStatusCode(code)).Observe(duration.Seconds())
+// ObserveHTTPRequestDuration updates the HTTP request duration metric.
+func (p *Prometheus) ObserveHTTPRequestDuration(method string, path string, code int, duration time.Duration) {
+	p.httpRequestDuration.WithLabelValues(method, path, p.formatStatusCode(code)).Observe(duration.Seconds())
 }
 
-// ObserveResponseSize updates the HTTP response size metric.
-func (p *Prometheus) ObserveResponseSize(method string, path string, code int, bytes int64) {
-	p.responseSize.WithLabelValues(method, path, p.formatStatusCode(code)).Observe(float64(bytes))
+// ObserveHTTPResponseSize updates the HTTP response size metric.
+func (p *Prometheus) ObserveHTTPResponseSize(method string, path string, code int, bytes int64) {
+	p.httpResponseSize.WithLabelValues(method, path, p.formatStatusCode(code)).Observe(float64(bytes))
 }
 
 func (p *Prometheus) formatStatusCode(code int) string {
