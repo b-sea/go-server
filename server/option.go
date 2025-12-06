@@ -75,11 +75,16 @@ func WithCustomCorrelationID(fn func() string) Option {
 	}
 }
 
-// AddHealthCheck adds a sub system to include during server healthchecks.
-func AddHealthCheck(name string, checker HealthChecker) Option {
+// AddHealthDependency adds a sub system to include during server healthchecks.
+func AddHealthDependency(name string, checker HealthChecker) Option {
 	return func(server *Server) {
-		server.log.Debug().Str("check", name).Msg("service healthcheck registered")
-		server.healthChecks[name] = checker
+		AddHandler(
+			"/health/"+name,
+			server.dependencyHealthCheckHandler(name),
+			http.MethodGet,
+		)(server)
+
+		server.healthDependencies[name] = checker
 	}
 }
 
