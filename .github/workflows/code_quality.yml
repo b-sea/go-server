@@ -32,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-go@v3
-    
+
       - name: generate test coverage
         run: GOTOOLCHAIN=go1.25.4+auto go test ./... -coverprofile=./tools/cover.out -covermode=atomic ./...
 
