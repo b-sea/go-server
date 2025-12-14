@@ -75,7 +75,7 @@ func WithCustomCorrelationID(fn func() string) Option {
 // AddHealthDependency adds a sub system to include during server healthchecks.
 func AddHealthDependency(name string, checker HealthChecker) Option {
 	return func(server *Server) {
-		server.log.Debug().Msgf("register GET /health/%s", name)
+		server.log.Debug().Str("method", http.MethodGet).Str("path", "/health/"+name).Msg("register endpoint")
 		server.router.Handle(
 			"/health/"+name,
 			server.dependencyHealthCheckHandler(name),
