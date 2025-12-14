@@ -1,5 +1,5 @@
 name: code quality
-on: 
+on:
   push:
     branches:
       - main
@@ -19,8 +19,8 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
-          
-      - name: golangci-lint
+
+      - name: run linter
         uses: golangci/golangci-lint-action@v8
         with:
           version: v2.6.1
@@ -30,16 +30,16 @@ jobs:
     name: go-test-coverage
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-go@v3
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v3
     
-    - name: generate test coverage
-      run: GOTOOLCHAIN=go1.25.4+auto go test ./... -coverprofile=./tools/cover.out -covermode=atomic ./...
+      - name: generate test coverage
+        run: GOTOOLCHAIN=go1.25.4+auto go test ./... -coverprofile=./tools/cover.out -covermode=atomic ./...
 
-    - name: check test coverage
-      uses: vladopajic/go-test-coverage@v2
-      with:
-        config: ./tools/.testcoverage.yml
+      - name: check test coverage
+        uses: vladopajic/go-test-coverage@v2
+        with:
+          config: ./tools/.testcoverage.yml
 
   # https://github.com/marketplace/actions/yamllint-github-action
   yamllint:
@@ -47,7 +47,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - uses: karancode/yamllint-github-action@master
+      - name: run linter
+        uses: karancode/yamllint-github-action@master
         with:
           yamllint_file_or_dir: .
           yamllint_strict: false
+          yamllint_config_filepath: ./tools/.yamllint.yml
