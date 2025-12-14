@@ -12,7 +12,7 @@ permissions:
 jobs:
   # https://github.com/golangci/golangci-lint-action
   golangci:
-    name: lint
+    name: golangci-lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -27,7 +27,7 @@ jobs:
 
   # https://github.com/vladopajic/go-test-coverage
   coverage:
-    name: test coverage
+    name: go-test-coverage
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -40,3 +40,14 @@ jobs:
       uses: vladopajic/go-test-coverage@v2
       with:
         config: ./tools/.testcoverage.yml
+
+  # https://github.com/marketplace/actions/yamllint-github-action
+  yamllint:
+    name: yamllint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: karancode/yamllint-github-action@master
+        with:
+          yamllint_file_or_dir: .
+          yamllint_strict: false
