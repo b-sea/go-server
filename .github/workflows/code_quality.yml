@@ -1,6 +1,6 @@
 ---
 name: code quality
-on:
+on:  # yamllint disable-line rule:truthy
   push:
     branches:
       - main
@@ -52,5 +52,5 @@ jobs:
         uses: karancode/yamllint-github-action@master
         with:
           yamllint_file_or_dir: .
-          yamllint_strict: false
+          yamllint_strict: true
           yamllint_config_filepath: ./tools/.yamllint.yml
