@@ -50,10 +50,10 @@ func New(log zerolog.Logger, recorder Recorder, options ...Option) *Server {
 		version:            "",
 	}
 
-	server.log.Debug().Msg("register telemetry middleware")
+	server.log.Debug().Str("middleware", "telemetry").Msg("register")
 	server.router.Use(server.telemetryMiddleware(recorder))
 
-	server.log.Debug().Msg("register GET /ping")
+	server.log.Debug().Str("method", http.MethodGet).Str("path", "/ping").Msg("register")
 	server.router.Handle(
 		"/ping",
 		func() http.HandlerFunc {
@@ -62,7 +62,7 @@ func New(log zerolog.Logger, recorder Recorder, options ...Option) *Server {
 			}
 		}()).Methods(http.MethodGet)
 
-	server.log.Debug().Msg("register GET /metrics")
+	server.log.Debug().Str("method", http.MethodGet).Str("path", "/metrics").Msg("register")
 	server.router.Handle(
 		"/metrics",
 		func() http.HandlerFunc {
@@ -71,7 +71,7 @@ func New(log zerolog.Logger, recorder Recorder, options ...Option) *Server {
 			}
 		}()).Methods(http.MethodGet)
 
-	server.log.Debug().Msg("register GET /health")
+	server.log.Debug().Str("method", http.MethodGet).Str("path", "/health").Msg("register")
 	server.router.Handle("/health", server.healthCheckHandler()).Methods(http.MethodGet)
 
 	for _, option := range options {
