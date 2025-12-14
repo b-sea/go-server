@@ -3,10 +3,7 @@ package server
 import (
 	"fmt"
 	"net/http"
-	"slices"
 	"time"
-
-	"github.com/gorilla/mux"
 )
 
 // Option is a creation option for a Server.
@@ -78,40 +75,12 @@ func WithCustomCorrelationID(fn func() string) Option {
 // AddHealthDependency adds a sub system to include during server healthchecks.
 func AddHealthDependency(name string, checker HealthChecker) Option {
 	return func(server *Server) {
-		AddHandler(
+		server.log.Debug().Msgf("register GET /health/%s", name)
+		server.router.Handle(
 			"/health/"+name,
 			server.dependencyHealthCheckHandler(name),
-			http.MethodGet,
-		)(server)
+		).Methods(http.MethodGet)
 
 		server.healthDependencies[name] = checker
-	}
-}
-
-// AddHandler adds an HTTP hander to the Server.
-func AddHandler(path string, handler http.Handler, methods ...string) Option {
-	return func(server *Server) {
-		handle := server.router.Handle(path, handler)
-
-		if len(methods) == 0 {
-			server.log.Debug().Str("path", path).Msg("route registered")
-
-			return
-		}
-
-		slices.Sort(methods)
-
-		for i := range methods {
-			server.log.Debug().Str("method", methods[i]).Str("path", path).Msg("route registered")
-		}
-
-		handle.Methods(methods...)
-	}
-}
-
-// AddMiddleware adds middleware to the Server.
-func AddMiddleware(middleware mux.MiddlewareFunc) Option {
-	return func(server *Server) {
-		server.router.Use(middleware)
 	}
 }

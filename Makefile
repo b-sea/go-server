@@ -8,7 +8,7 @@ tidy:
 	go mod tidy
 
 test:
-	go test ./... -coverprofile=./tools/cover.out -covermode=atomic ./...
+	go test -race ./... -coverprofile=./tools/cover.out -covermode=atomic ./...
 
 setup-coverage:
 	go install github.com/vladopajic/go-test-coverage/v2@latest
