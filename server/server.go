@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -20,6 +21,7 @@ const (
 
 // Server is a supply-run API web server.
 type Server struct {
+	mu                    sync.Mutex
 	readCorrelationHeader bool
 	newCorrelationID      func() string
 	router                *mux.Router
@@ -48,37 +50,33 @@ func New(log zerolog.Logger, recorder Recorder, options ...Option) *Server {
 		version:            "",
 	}
 
-	options = append(
-		options,
-		AddMiddleware(server.telemetryMiddleware(recorder)),
-		AddHandler(
-			"/ping",
-			func() http.HandlerFunc {
-				return func(writer http.ResponseWriter, _ *http.Request) {
-					_, _ = writer.Write([]byte(`pong`))
-				}
-			}(),
-			http.MethodGet,
-		),
-		AddHandler("/health", server.healthCheckHandler(), http.MethodGet),
-		AddHandler(
-			"/metrics",
-			func() http.HandlerFunc {
-				return func(writer http.ResponseWriter, request *http.Request) {
-					recorder.Handler().ServeHTTP(writer, request)
-				}
-			}(),
-			http.MethodGet,
-		),
-	)
+	server.log.Debug().Msg("register telemetry middleware")
+	server.router.Use(server.telemetryMiddleware(recorder))
+
+	server.log.Debug().Msg("register GET /ping")
+	server.router.Handle(
+		"/ping",
+		func() http.HandlerFunc {
+			return func(writer http.ResponseWriter, _ *http.Request) {
+				_, _ = writer.Write([]byte(`pong`))
+			}
+		}()).Methods(http.MethodGet)
+
+	server.log.Debug().Msg("register GET /metrics")
+	server.router.Handle(
+		"/metrics",
+		func() http.HandlerFunc {
+			return func(writer http.ResponseWriter, request *http.Request) {
+				recorder.Handler().ServeHTTP(writer, request)
+			}
+		}()).Methods(http.MethodGet)
+
+	server.log.Debug().Msg("register GET /health")
+	server.router.Handle("/health", server.healthCheckHandler()).Methods(http.MethodGet)
 
 	for _, option := range options {
 		option(server)
 	}
-
-	// Re-define the default NotFound handler so it passes through middleware correctly.
-	server.router.NotFoundHandler = server.router.NewRoute().HandlerFunc(http.NotFound).GetHandler()
-	server.http.Handler = server.router
 
 	return server
 }
@@ -112,15 +110,24 @@ func (s *Server) WriteTimeout() time.Duration {
 	return s.http.WriteTimeout
 }
 
+// Router returns the server router.
+func (s *Server) Router() *mux.Router {
+	return s.router
+}
+
 func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	s.prepareServe()
 	s.http.Handler.ServeHTTP(writer, request)
 }
 
 // Start the Server.
 func (s *Server) Start() error {
 	s.log.Info().Str("addr", s.http.Addr).Msg("starting server")
+	s.prepareServe()
 
+	s.mu.Lock()
 	s.startedAt = time.Now()
+	s.mu.Unlock()
 
 	if err := s.http.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return err //nolint: wrapcheck
@@ -133,10 +140,21 @@ func (s *Server) Start() error {
 func (s *Server) Stop() error {
 	s.log.Info().Str("addr", s.http.Addr).Msg("stopping server")
 
+	s.mu.Lock()
 	s.startedAt = time.Time{}
+	s.mu.Unlock()
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
 	return s.http.Shutdown(ctx) //nolint: wrapcheck
+}
+
+func (s *Server) prepareServe() {
+	if s.router.NotFoundHandler == nil {
+		// Re-define the default NotFound handler so it passes through middleware correctly.
+		s.router.NotFoundHandler = s.router.NewRoute().HandlerFunc(http.NotFound).GetHandler()
+	}
+
+	s.http.Handler = s.router
 }

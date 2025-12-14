@@ -25,15 +25,11 @@ type serviceHealth struct {
 	err  error
 }
 
-func (s *Server) checkService(name string, in <-chan HealthChecker, out chan<- serviceHealth) {
-	checker := <-in
-
-	health := serviceHealth{
+func (s *Server) checkService(name string, checker HealthChecker, out chan<- serviceHealth) {
+	out <- serviceHealth{
 		name: name,
 		err:  checker.HealthCheck(),
 	}
-
-	out <- health
 }
 
 func (s *Server) healthCheckHandler() http.Handler {
@@ -52,13 +48,10 @@ func (s *Server) healthCheckHandler() http.Handler {
 			Dependencies: make(map[string]string, 0),
 		}
 
-		checkChan := make(chan HealthChecker)
 		serviceChan := make(chan serviceHealth)
 
 		for name, checker := range s.healthDependencies {
-			go s.checkService(name, checkChan, serviceChan)
-
-			checkChan <- checker
+			go s.checkService(name, checker, serviceChan)
 		}
 
 		for range s.healthDependencies {

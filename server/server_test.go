@@ -14,6 +14,7 @@ import (
 	"github.com/b-sea/go-server/metrics"
 	"github.com/b-sea/go-server/server"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/pkgerrors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -95,21 +96,24 @@ func TestServerPing(t *testing.T) {
 }
 
 func TestPanickedHandler(t *testing.T) {
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
+
 	var buffer bytes.Buffer
-	testServer := httptest.NewServer(
-		server.New(
-			zerolog.New(&buffer).Level(zerolog.ErrorLevel),
-			&metrics.NoOp{},
-			server.WithCustomCorrelationID(func() string { return "123-special-id-456" }),
-			server.AddHandler("/test",
-				func() http.HandlerFunc {
-					return func(writer http.ResponseWriter, _ *http.Request) {
-						panic("uh oh!")
-					}
-				}(),
-			),
-		),
+
+	svr := server.New(
+		zerolog.New(&buffer).Level(zerolog.ErrorLevel),
+		&metrics.NoOp{},
+		server.WithCustomCorrelationID(func() string { return "123-special-id-456" }),
 	)
+
+	svr.Router().Handle("/test",
+		func() http.HandlerFunc {
+			return func(writer http.ResponseWriter, _ *http.Request) {
+				panic("uh oh!")
+			}
+		}()).Methods(http.MethodGet)
+
+	testServer := httptest.NewServer(svr)
 
 	request, _ := http.NewRequestWithContext(
 		context.Background(),
@@ -126,7 +130,19 @@ func TestPanickedHandler(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
 	assert.Equal(
 		t,
-		"{\"level\":\"error\",\"correlation_id\":\"123-special-id-456\",\"error\":\"http: uh oh!\"}\n",
+		"{\"level\":\"error\",\"correlation_id\":\"123-special-id-456\",\"stack\":["+
+			"{\"func\":\"New.(*Server).telemetryMiddleware.func3.1.1\",\"line\":\"65\",\"source\":\"telemetry.go\"},"+
+			"{\"func\":\"gopanic\",\"line\":\"783\",\"source\":\"panic.go\"},"+
+			"{\"func\":\"TestPanickedHandler.TestPanickedHandler.func2.func4\",\"line\":\"112\",\"source\":\"server_test.go\"},"+
+			"{\"func\":\"HandlerFunc.ServeHTTP\",\"line\":\"2322\",\"source\":\"server.go\"},"+
+			"{\"func\":\"New.(*Server).telemetryMiddleware.func3.1\",\"line\":\"99\",\"source\":\"telemetry.go\"},"+
+			"{\"func\":\"HandlerFunc.ServeHTTP\",\"line\":\"2322\",\"source\":\"server.go\"},"+
+			"{\"func\":\"(*Router).ServeHTTP\",\"line\":\"212\",\"source\":\"mux.go\"},"+
+			"{\"func\":\"(*Server).ServeHTTP\",\"line\":\"120\",\"source\":\"server.go\"},"+
+			"{\"func\":\"serverHandler.ServeHTTP\",\"line\":\"3340\",\"source\":\"server.go\"},"+
+			"{\"func\":\"(*conn).serve\",\"line\":\"2109\",\"source\":\"server.go\"},"+
+			"{\"func\":\"goexit\",\"line\":\"1693\",\"source\":\"asm_amd64.s\"}"+
+			"],\"error\":\"http: uh oh!\"}\n",
 		buffer.String(),
 	)
 
