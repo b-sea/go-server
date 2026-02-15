@@ -2,13 +2,14 @@ package server_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/b-sea/go-server/metrics"
 	"github.com/b-sea/go-server/server"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
@@ -18,11 +19,29 @@ var (
 	_ server.HealthChecker = (*HealthCheck)(nil)
 )
 
+type JSONError struct {
+	Inner any
+}
+
+func (e *JSONError) Error() string {
+	return fmt.Sprintf("json error: %v", e.Inner)
+}
+
+func (e *JSONError) MarshalJSON() ([]byte, error) {
+	return json.Marshal(
+		struct {
+			Details any `json:"details"`
+		}{
+			Details: e.Inner,
+		},
+	)
+}
+
 type HealthCheck struct {
 	Err error
 }
 
-func (m *HealthCheck) HealthCheck() error {
+func (m *HealthCheck) HealthCheck(context.Context) error {
 	return m.Err
 }
 
@@ -65,17 +84,17 @@ func TestServerHealth(t *testing.T) {
 			result:     "",
 			statusCode: http.StatusInternalServerError,
 		},
-		"unhealthy verbose": {
+		"unhealthy verbose with dependencies": {
 			url:        "/health?verbose",
 			option:     server.AddHealthDependency("sub-system", &HealthCheck{Err: errors.New("something bad")}),
 			result:     "{\"status\":\"unhealthy\",\"uptime\":0,\"dependencies\":{\"sub-system\":\"something bad\"}}\n",
 			statusCode: http.StatusInternalServerError,
 		},
-		"with version": {
+		"unhealthy verbose with dependencies marshal": {
 			url:        "/health?verbose",
-			option:     server.SetVersion("v1.2.3.test"),
-			result:     "{\"status\":\"healthy\",\"version\":\"v1.2.3.test\",\"uptime\":0}\n",
-			statusCode: http.StatusOK,
+			option:     server.AddHealthDependency("sub-system", &HealthCheck{Err: &JSONError{Inner: "extra details"}}),
+			result:     "{\"status\":\"unhealthy\",\"uptime\":0,\"dependencies\":{\"sub-system\":{\"details\":\"extra details\"}}}\n",
+			statusCode: http.StatusInternalServerError,
 		},
 	}
 
@@ -86,9 +105,9 @@ func TestServerHealth(t *testing.T) {
 				options = append(options, test.option)
 			}
 
-			testServer := httptest.NewServer(server.New(zerolog.Nop(), &metrics.NoOp{}, options...))
+			testServer := httptest.NewServer(server.New(zerolog.Nop(), &server.NoOpRecorder{}, options...))
 
-			endpoint := testServer.URL + "/" + test.url
+			endpoint := testServer.URL + test.url
 			request, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, nil)
 			request.Close = true
 
@@ -147,6 +166,13 @@ func TestDependencyHealth(t *testing.T) {
 			statusCode:  http.StatusInternalServerError,
 			contentType: "application/json",
 		},
+		"unhealthy verbose marshal": {
+			url:         "/health/sub-system?verbose",
+			option:      server.AddHealthDependency("sub-system", &HealthCheck{Err: &JSONError{Inner: "extra details"}}),
+			result:      "{\"details\":\"extra details\"}\n",
+			statusCode:  http.StatusInternalServerError,
+			contentType: "application/json",
+		},
 		"not found": {
 			url:         "/health/different",
 			option:      server.AddHealthDependency("sub-system", &HealthCheck{}),
@@ -158,9 +184,9 @@ func TestDependencyHealth(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			testServer := httptest.NewServer(server.New(zerolog.Nop(), &metrics.NoOp{}, test.option))
+			testServer := httptest.NewServer(server.New(zerolog.Nop(), &server.NoOpRecorder{}, test.option))
 
-			endpoint := testServer.URL + "/" + test.url
+			endpoint := testServer.URL + test.url
 			request, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, nil)
 			request.Close = true
 

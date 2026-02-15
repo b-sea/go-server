@@ -1,4 +1,4 @@
-package metrics
+package server
 
 import (
 	"fmt"
@@ -6,43 +6,42 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/b-sea/go-server/server"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const subsystem = "http"
 
-// PrometheusOption is a creation option for Prometheus.
-type PrometheusOption func(p *Prometheus)
+// PrometheusOption is a creation option for PrometheusRecorder.
+type PrometheusOption func(p *PrometheusRecorder)
 
 // WithGroupedCodes records status codes as their hundreds value: 2xx/4xx/5xx.
 func WithGroupedCodes() PrometheusOption {
-	return func(p *Prometheus) {
+	return func(p *PrometheusRecorder) {
 		p.groupCodes = true
 	}
 }
 
-// WithRegisterer sets a custom Prometheus registerer.
+// WithRegisterer sets a custom PrometheusRecorder registerer.
 func WithRegisterer(registerer prometheus.Registerer) PrometheusOption {
-	return func(p *Prometheus) {
+	return func(p *PrometheusRecorder) {
 		p.registerer = registerer
 	}
 }
 
-var _ server.Recorder = (*Prometheus)(nil)
+var _ Recorder = (*PrometheusRecorder)(nil)
 
-// Prometheus records metrics with Prometheus.
-type Prometheus struct {
+// PrometheusRecorder records metrics with PrometheusRecorder.
+type PrometheusRecorder struct {
 	groupCodes          bool
 	registerer          prometheus.Registerer
 	httpRequestDuration *prometheus.HistogramVec
 	httpResponseSize    *prometheus.HistogramVec
 }
 
-// NewPrometheus creates a new Prometheus recorder.
-func NewPrometheus(namespace string, options ...PrometheusOption) *Prometheus {
-	recorder := &Prometheus{
+// NewPrometheus creates a new PrometheusRecorder.
+func NewPrometheus(namespace string, options ...PrometheusOption) *PrometheusRecorder {
+	recorder := &PrometheusRecorder{
 		groupCodes: false,
 		registerer: prometheus.DefaultRegisterer,
 		httpRequestDuration: prometheus.NewHistogramVec(
@@ -75,22 +74,22 @@ func NewPrometheus(namespace string, options ...PrometheusOption) *Prometheus {
 	return recorder
 }
 
-// Handler returns an http handler for Prometheus.
-func (p *Prometheus) Handler() http.Handler {
+// Handler returns an http handler for a PrometheusRecorder.
+func (p *PrometheusRecorder) Handler() http.Handler {
 	return promhttp.Handler()
 }
 
 // ObserveHTTPRequestDuration updates the HTTP request duration metric.
-func (p *Prometheus) ObserveHTTPRequestDuration(method string, path string, code int, duration time.Duration) {
+func (p *PrometheusRecorder) ObserveHTTPRequestDuration(method string, path string, code int, duration time.Duration) {
 	p.httpRequestDuration.WithLabelValues(method, path, p.formatStatusCode(code)).Observe(duration.Seconds())
 }
 
 // ObserveHTTPResponseSize updates the HTTP response size metric.
-func (p *Prometheus) ObserveHTTPResponseSize(method string, path string, code int, bytes int64) {
+func (p *PrometheusRecorder) ObserveHTTPResponseSize(method string, path string, code int, bytes int64) {
 	p.httpResponseSize.WithLabelValues(method, path, p.formatStatusCode(code)).Observe(float64(bytes))
 }
 
-func (p *Prometheus) formatStatusCode(code int) string {
+func (p *PrometheusRecorder) formatStatusCode(code int) string {
 	if !p.groupCodes {
 		return strconv.Itoa(code)
 	}
