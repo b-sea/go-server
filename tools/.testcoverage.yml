@@ -8,6 +8,7 @@ threshold:
 
 exclude:
   paths:
-    - metrics
+    - noop.go
+    - prometheus.go
 
 force-annotation-comment: true

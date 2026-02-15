@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"time"
@@ -17,7 +18,7 @@ const (
 
 // HealthChecker defines functions required to run health checks.
 type HealthChecker interface {
-	HealthCheck() error
+	HealthCheck(ctx context.Context) error
 }
 
 type serviceHealth struct {
@@ -25,10 +26,10 @@ type serviceHealth struct {
 	err  error
 }
 
-func (s *Server) checkService(name string, checker HealthChecker, out chan<- serviceHealth) {
+func (s *Server) checkService(ctx context.Context, name string, checker HealthChecker, out chan<- serviceHealth) {
 	out <- serviceHealth{
 		name: name,
-		err:  checker.HealthCheck(),
+		err:  checker.HealthCheck(ctx),
 	}
 }
 
@@ -37,21 +38,19 @@ func (s *Server) healthCheckHandler() http.Handler {
 		writer.Header().Add("Content-Type", "application/json")
 
 		result := struct {
-			Status       string            `json:"status"`
-			Version      string            `json:"version,omitempty"`
-			Uptime       time.Duration     `json:"uptime"`
-			Dependencies map[string]string `json:"dependencies,omitempty"`
+			Status       string         `json:"status"`
+			Uptime       time.Duration  `json:"uptime"`
+			Dependencies map[string]any `json:"dependencies,omitempty"`
 		}{
 			Status:       healthyStatus,
-			Version:      s.version,
 			Uptime:       s.Uptime(),
-			Dependencies: make(map[string]string, 0),
+			Dependencies: make(map[string]any, 0),
 		}
 
 		serviceChan := make(chan serviceHealth)
 
 		for name, checker := range s.healthDependencies {
-			go s.checkService(name, checker, serviceChan)
+			go s.checkService(request.Context(), name, checker, serviceChan)
 		}
 
 		for range s.healthDependencies {
@@ -59,15 +58,20 @@ func (s *Server) healthCheckHandler() http.Handler {
 
 			result.Dependencies[health.name] = healthyStatus
 
-			if health.err != nil {
+			if health.err == nil {
+				continue
+			}
+
+			result.Dependencies[health.name] = health.err
+			if data, err := json.Marshal(health.err); err != nil || string(data) == "{}" {
 				result.Dependencies[health.name] = health.err.Error()
+			}
 
-				// This extra check stops a "superfluous call to response.WriteHeader"
-				if result.Status == healthyStatus {
-					result.Status = unhealthyStatus
+			// This extra check stops a "superfluous call to response.WriteHeader"
+			if result.Status == healthyStatus {
+				result.Status = unhealthyStatus
 
-					writer.WriteHeader(http.StatusInternalServerError)
-				}
+				writer.WriteHeader(http.StatusInternalServerError)
 			}
 		}
 
@@ -92,12 +96,15 @@ func (s *Server) dependencyHealthCheckHandler(name string) http.Handler {
 
 		writer.Header().Add("Content-Type", "application/json")
 
-		result := map[string]string{name: healthyStatus}
+		result := map[string]any{name: healthyStatus}
 
-		if err := checker.HealthCheck(); err != nil {
+		if err := checker.HealthCheck(request.Context()); err != nil {
 			writer.WriteHeader(http.StatusInternalServerError)
 
-			result[name] = err.Error()
+			result[name] = err
+			if data, jsonErr := json.Marshal(err); jsonErr != nil || string(data) == "{}" {
+				result[name] = err.Error()
+			}
 		}
 
 		zerolog.Ctx(request.Context()).Info().Interface("health", result).Msg("health check")

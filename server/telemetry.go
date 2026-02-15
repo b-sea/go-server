@@ -62,7 +62,7 @@ func (s *Server) telemetryMiddleware(recorder Recorder) mux.MiddlewareFunc {
 					}
 
 					hijack.WriteHeader(http.StatusInternalServerError)
-					s.log.Error().Stack().Err(errors.Wrap(err, "http")).Send()
+					s.log.Error().Stack().Err(errors.Wrap(err, "panic")).Send()
 				}
 
 				duration := time.Since(start)

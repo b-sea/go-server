@@ -36,7 +36,7 @@ func SetPort(port int) Option {
 // SetReadTimeout overrides the HTTP read and read header timeouts for the Server.
 func SetReadTimeout(duration time.Duration) Option {
 	return func(server *Server) {
-		if duration <= 0 || duration == defaultTimeout {
+		if duration == defaultTimeout {
 			return
 		}
 
@@ -49,7 +49,7 @@ func SetReadTimeout(duration time.Duration) Option {
 // SetWriteTimeout overrides the HTTP write timeout for the Server.
 func SetWriteTimeout(duration time.Duration) Option {
 	return func(server *Server) {
-		if duration <= 0 || duration == defaultTimeout {
+		if duration == defaultTimeout {
 			return
 		}
 
@@ -61,6 +61,7 @@ func SetWriteTimeout(duration time.Duration) Option {
 // ReadCorrelationHeader will allow the service to read a correlation ID from a request header.
 func ReadCorrelationHeader() Option {
 	return func(server *Server) {
+		server.log.Debug().Msg("server will extract Correlation-Id headers")
 		server.readCorrelationHeader = true
 	}
 }
@@ -75,9 +76,9 @@ func WithCustomCorrelationID(fn func() string) Option {
 // AddHealthDependency adds a sub system to include during server healthchecks.
 func AddHealthDependency(name string, checker HealthChecker) Option {
 	return func(server *Server) {
-		server.log.Debug().Str("method", http.MethodGet).Str("path", "/health/"+name).Msg("register endpoint")
+		server.log.Debug().Str("name", name).Msg("register health dependency")
 		server.router.Handle(
-			"/health/"+name,
+			healthEndpoint+"/"+name,
 			server.dependencyHealthCheckHandler(name),
 		).Methods(http.MethodGet)
 

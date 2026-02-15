@@ -17,6 +17,11 @@ import (
 const (
 	defaultPort    = 5000
 	defaultTimeout = 5 * time.Second
+
+	healthEndpoint  = "/health"
+	metricsEndpoint = "/metrics"
+	pingEndpoint    = "/ping"
+	versionEndpoint = "/version"
 )
 
 // Server is a supply-run API web server.
@@ -50,29 +55,7 @@ func New(log zerolog.Logger, recorder Recorder, options ...Option) *Server {
 		version:            "",
 	}
 
-	server.log.Debug().Str("middleware", "telemetry").Msg("register")
-	server.router.Use(server.telemetryMiddleware(recorder))
-
-	server.log.Debug().Str("method", http.MethodGet).Str("path", "/ping").Msg("register")
-	server.router.Handle(
-		"/ping",
-		func() http.HandlerFunc {
-			return func(writer http.ResponseWriter, _ *http.Request) {
-				_, _ = writer.Write([]byte(`pong`))
-			}
-		}()).Methods(http.MethodGet)
-
-	server.log.Debug().Str("method", http.MethodGet).Str("path", "/metrics").Msg("register")
-	server.router.Handle(
-		"/metrics",
-		func() http.HandlerFunc {
-			return func(writer http.ResponseWriter, request *http.Request) {
-				recorder.Handler().ServeHTTP(writer, request)
-			}
-		}()).Methods(http.MethodGet)
-
-	server.log.Debug().Str("method", http.MethodGet).Str("path", "/health").Msg("register")
-	server.router.Handle("/health", server.healthCheckHandler()).Methods(http.MethodGet)
+	server.addDefaultHandlers(recorder)
 
 	for _, option := range options {
 		option(server)
@@ -116,14 +99,14 @@ func (s *Server) Router() *mux.Router {
 }
 
 func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	s.prepareServe()
+	s.prepareHTTPServe()
 	s.http.Handler.ServeHTTP(writer, request)
 }
 
 // Start the Server.
 func (s *Server) Start() error {
 	s.log.Info().Str("addr", s.http.Addr).Msg("starting server")
-	s.prepareServe()
+	s.prepareHTTPServe()
 
 	s.mu.Lock()
 	s.startedAt = time.Now()
@@ -150,11 +133,63 @@ func (s *Server) Stop() error {
 	return s.http.Shutdown(ctx) //nolint: wrapcheck
 }
 
-func (s *Server) prepareServe() {
+func (s *Server) prepareHTTPServe() {
 	if s.router.NotFoundHandler == nil {
 		// Re-define the default NotFound handler so it passes through middleware correctly.
 		s.router.NotFoundHandler = s.router.NewRoute().HandlerFunc(http.NotFound).GetHandler()
 	}
 
 	s.http.Handler = s.router
+}
+
+func (s *Server) addDefaultHandlers(recorder Recorder) {
+	s.log.Debug().Str("middleware", "telemetry").Msg("register")
+	s.router.Use(s.telemetryMiddleware(recorder))
+
+	s.log.Debug().Str("method", http.MethodGet).Str("path", pingEndpoint).Msg("register")
+	s.router.Handle(
+		pingEndpoint,
+		func() http.HandlerFunc {
+			return func(writer http.ResponseWriter, _ *http.Request) {
+				_, _ = writer.Write([]byte(`pong`))
+			}
+		}(),
+	).Methods(http.MethodGet)
+
+	s.log.Debug().Str("method", http.MethodGet).Str("path", versionEndpoint).Msg("register")
+	s.router.Handle(
+		versionEndpoint,
+		func() http.HandlerFunc {
+			return func(writer http.ResponseWriter, _ *http.Request) {
+				version := "unversioned"
+				if s.version != "" {
+					version = s.version
+				}
+
+				_, _ = writer.Write([]byte(version))
+			}
+		}(),
+	).Methods(http.MethodGet)
+
+	s.log.Debug().Str("method", http.MethodGet).Str("path", metricsEndpoint).Msg("register")
+	s.router.Handle(
+		pingEndpoint,
+		func() http.HandlerFunc {
+			return func(writer http.ResponseWriter, _ *http.Request) {
+				_, _ = writer.Write([]byte(`pong`))
+			}
+		}(),
+	).Methods(http.MethodGet)
+
+	s.router.Handle(
+		metricsEndpoint,
+		func() http.HandlerFunc {
+			return func(writer http.ResponseWriter, request *http.Request) {
+				recorder.Handler().ServeHTTP(writer, request)
+			}
+		}(),
+	).Methods(http.MethodGet)
+
+	s.log.Debug().Str("method", http.MethodGet).Str("path", healthEndpoint).Msg("register")
+	s.router.Handle(healthEndpoint, s.healthCheckHandler()).Methods(http.MethodGet)
 }
