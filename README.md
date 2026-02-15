@@ -19,7 +19,6 @@ import (
     "os/signal"
     "syscall"
 
-    "github.com/b-sea/go-server/metrics"
     "github.com/b-sea/go-server/server"
     "github.com/rs/zerolog"
 )
