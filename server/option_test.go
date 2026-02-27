@@ -15,40 +15,40 @@ import (
 )
 
 func TestSetVersion(t *testing.T) {
-	testServer := server.New(zerolog.Nop(), &server.NoOpRecorder{})
-	server.SetVersion("")(testServer)
+	testServer := server.New(context.Background(), &server.NoOpRecorder{})
+	server.SetVersion("")(context.Background(), testServer)
 	assert.Equal(t, "", testServer.Version())
 
-	server.SetVersion("special-test-version")(testServer)
+	server.SetVersion("special-test-version")(context.Background(), testServer)
 	assert.Equal(t, "special-test-version", testServer.Version())
 }
 
 func TestSetPort(t *testing.T) {
-	testServer := server.New(zerolog.Nop(), &server.NoOpRecorder{})
-	server.SetPort(5000)(testServer)
+	testServer := server.New(context.Background(), &server.NoOpRecorder{})
+	server.SetPort(5000)(context.Background(), testServer)
 	assert.Equal(t, ":5000", testServer.Addr())
 
-	server.SetPort(4567)(testServer)
+	server.SetPort(4567)(context.Background(), testServer)
 	assert.Equal(t, ":4567", testServer.Addr())
 }
 
 func TestSetReadTimeout(t *testing.T) {
-	testServer := server.New(zerolog.Nop(), &server.NoOpRecorder{})
-	server.SetReadTimeout(time.Hour)(testServer)
+	testServer := server.New(context.Background(), &server.NoOpRecorder{})
+	server.SetReadTimeout(time.Hour)(context.Background(), testServer)
 	assert.Equal(t, time.Hour, testServer.ReadTimeout())
 
-	testServer = server.New(zerolog.Nop(), &server.NoOpRecorder{})
-	server.SetReadTimeout(5 * time.Second)(testServer)
+	testServer = server.New(context.Background(), &server.NoOpRecorder{})
+	server.SetReadTimeout(5*time.Second)(context.Background(), testServer)
 	assert.Equal(t, 5*time.Second, testServer.ReadTimeout())
 }
 
 func TestSetWriteTimeout(t *testing.T) {
-	testServer := server.New(zerolog.Nop(), &server.NoOpRecorder{})
-	server.SetWriteTimeout(time.Hour)(testServer)
+	testServer := server.New(context.Background(), &server.NoOpRecorder{})
+	server.SetWriteTimeout(time.Hour)(context.Background(), testServer)
 	assert.Equal(t, time.Hour, testServer.WriteTimeout())
 
-	testServer = server.New(zerolog.Nop(), &server.NoOpRecorder{})
-	server.SetWriteTimeout(5 * time.Second)(testServer)
+	testServer = server.New(context.Background(), &server.NoOpRecorder{})
+	server.SetWriteTimeout(5*time.Second)(context.Background(), testServer)
 	assert.Equal(t, 5*time.Second, testServer.WriteTimeout())
 }
 
@@ -56,7 +56,7 @@ func TestWithCustomCorrelationID(t *testing.T) {
 	var buffer bytes.Buffer
 	testServer := httptest.NewServer(
 		server.New(
-			zerolog.New(&buffer),
+			zerolog.New(&buffer).WithContext(context.Background()),
 			&server.NoOpRecorder{},
 			server.WithCustomCorrelationID(func() string { return "123-special-id-456" }),
 		),
@@ -82,7 +82,14 @@ func TestWithCustomCorrelationID(t *testing.T) {
 
 func TestReadCorrelationHeader(t *testing.T) {
 	var buffer bytes.Buffer
-	testServer := httptest.NewServer(server.New(zerolog.New(&buffer), &server.NoOpRecorder{}, server.ReadCorrelationHeader()))
+
+	testServer := httptest.NewServer(
+		server.New(
+			zerolog.New(&buffer).WithContext(context.Background()),
+			&server.NoOpRecorder{},
+			server.ReadCorrelationHeader(),
+		),
+	)
 
 	request, _ := http.NewRequestWithContext(
 		context.Background(),

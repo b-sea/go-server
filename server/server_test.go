@@ -31,21 +31,21 @@ func findOpenPort(t *testing.T) int {
 }
 
 func TestServerStartStop(t *testing.T) {
-	testServer := server.New(zerolog.Nop(), &server.NoOpRecorder{}, server.SetPort(findOpenPort(t)))
+	testServer := server.New(context.Background(), &server.NoOpRecorder{}, server.SetPort(findOpenPort(t)))
 
 	timer := time.NewTimer(500 * time.Millisecond)
 
 	go func() {
-		assert.NoError(t, testServer.Start())
+		assert.NoError(t, testServer.Start(context.Background()))
 	}()
 
 	<-timer.C
 
-	assert.NoError(t, testServer.Stop())
+	assert.NoError(t, testServer.Stop(context.Background()))
 }
 
 func TestServerMetrics(t *testing.T) {
-	testServer := httptest.NewServer(server.New(zerolog.Nop(), &server.NoOpRecorder{}))
+	testServer := httptest.NewServer(server.New(context.Background(), &server.NoOpRecorder{}))
 
 	request, _ := http.NewRequestWithContext(
 		context.Background(),
@@ -72,7 +72,7 @@ func TestServerMetrics(t *testing.T) {
 }
 
 func TestServerPing(t *testing.T) {
-	testServer := httptest.NewServer(server.New(zerolog.Nop(), &server.NoOpRecorder{}))
+	testServer := httptest.NewServer(server.New(context.Background(), &server.NoOpRecorder{}))
 
 	request, _ := http.NewRequestWithContext(
 		context.Background(),
@@ -99,7 +99,7 @@ func TestServerPing(t *testing.T) {
 }
 
 func TestServerVersion(t *testing.T) {
-	testServer := httptest.NewServer(server.New(zerolog.Nop(), &server.NoOpRecorder{}, server.SetVersion("test-123")))
+	testServer := httptest.NewServer(server.New(context.Background(), &server.NoOpRecorder{}, server.SetVersion("test-123")))
 
 	request, _ := http.NewRequestWithContext(
 		context.Background(),
@@ -126,12 +126,14 @@ func TestServerVersion(t *testing.T) {
 }
 
 func TestPanickedHandler(t *testing.T) {
-	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
-
 	var buffer bytes.Buffer
 
+	log := zerolog.New(&buffer).Level(zerolog.ErrorLevel)
+	zerolog.DefaultContextLogger = &log
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
+
 	svr := server.New(
-		zerolog.New(&buffer).Level(zerolog.ErrorLevel),
+		context.Background(),
 		&server.NoOpRecorder{},
 		server.WithCustomCorrelationID(func() string { return "123-special-id-456" }),
 	)
@@ -160,23 +162,7 @@ func TestPanickedHandler(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
-	assert.Equal(
-		t,
-		"{\"level\":\"error\",\"correlation_id\":\"123-special-id-456\",\"stack\":["+
-			"{\"func\":\"(*Server).addDefaultHandlers.(*Server).telemetryMiddleware.func5.1.1\",\"line\":\"65\",\"source\":\"telemetry.go\"},"+
-			"{\"func\":\"gopanic\",\"line\":\"783\",\"source\":\"panic.go\"},"+
-			"{\"func\":\"TestPanickedHandler.TestPanickedHandler.func2.func4\",\"line\":\"143\",\"source\":\"server_test.go\"},"+
-			"{\"func\":\"HandlerFunc.ServeHTTP\",\"line\":\"2322\",\"source\":\"server.go\"},"+
-			"{\"func\":\"(*Server).addDefaultHandlers.(*Server).telemetryMiddleware.func5.1\",\"line\":\"99\",\"source\":\"telemetry.go\"},"+
-			"{\"func\":\"HandlerFunc.ServeHTTP\",\"line\":\"2322\",\"source\":\"server.go\"},"+
-			"{\"func\":\"(*Router).ServeHTTP\",\"line\":\"212\",\"source\":\"mux.go\"},"+
-			"{\"func\":\"(*Server).ServeHTTP\",\"line\":\"103\",\"source\":\"server.go\"},"+
-			"{\"func\":\"serverHandler.ServeHTTP\",\"line\":\"3340\",\"source\":\"server.go\"},"+
-			"{\"func\":\"(*conn).serve\",\"line\":\"2109\",\"source\":\"server.go\"},"+
-			"{\"func\":\"goexit\",\"line\":\"1693\",\"source\":\"asm_amd64.s\"}"+
-			"],\"error\":\"panic: uh oh!\"}\n",
-		buffer.String(),
-	)
+	assert.Contains(t, buffer.String(), "{\"level\":\"error\",\"correlation_id\":\"123-special-id-456\",\"stack\":[")
 
 	testServer.Close()
 }

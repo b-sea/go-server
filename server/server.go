@@ -33,12 +33,11 @@ type Server struct {
 	http                  *http.Server
 	healthDependencies    map[string]HealthChecker
 	startedAt             time.Time
-	log                   zerolog.Logger
 	version               string
 }
 
 // New creates a new Server.
-func New(log zerolog.Logger, recorder Recorder, options ...Option) *Server {
+func New(ctx context.Context, recorder Recorder, options ...Option) *Server {
 	server := &Server{
 		readCorrelationHeader: false,
 		newCorrelationID:      uuid.NewString,
@@ -51,14 +50,13 @@ func New(log zerolog.Logger, recorder Recorder, options ...Option) *Server {
 		},
 		healthDependencies: make(map[string]HealthChecker),
 		startedAt:          time.Time{},
-		log:                log,
 		version:            "",
 	}
 
-	server.addDefaultHandlers(recorder)
+	server.addDefaultHandlers(ctx, recorder)
 
 	for _, option := range options {
-		option(server)
+		option(ctx, server)
 	}
 
 	return server
@@ -104,8 +102,8 @@ func (s *Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 }
 
 // Start the Server.
-func (s *Server) Start() error {
-	s.log.Info().Str("addr", s.http.Addr).Msg("starting server")
+func (s *Server) Start(ctx context.Context) error {
+	zerolog.Ctx(ctx).Info().Str("addr", s.http.Addr).Msg("starting server")
 	s.prepareHTTPServe()
 
 	s.mu.Lock()
@@ -120,14 +118,14 @@ func (s *Server) Start() error {
 }
 
 // Stop the Server.
-func (s *Server) Stop() error {
-	s.log.Info().Str("addr", s.http.Addr).Msg("stopping server")
+func (s *Server) Stop(ctx context.Context) error {
+	zerolog.Ctx(ctx).Info().Str("addr", s.http.Addr).Msg("stopping server")
 
 	s.mu.Lock()
 	s.startedAt = time.Time{}
 	s.mu.Unlock()
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 
 	return s.http.Shutdown(ctx) //nolint: wrapcheck
@@ -142,11 +140,11 @@ func (s *Server) prepareHTTPServe() {
 	s.http.Handler = s.router
 }
 
-func (s *Server) addDefaultHandlers(recorder Recorder) {
-	s.log.Debug().Str("middleware", "telemetry").Msg("register")
+func (s *Server) addDefaultHandlers(ctx context.Context, recorder Recorder) {
+	zerolog.Ctx(ctx).Debug().Str("middleware", "telemetry").Msg("register")
 	s.router.Use(s.telemetryMiddleware(recorder))
 
-	s.log.Debug().Str("method", http.MethodGet).Str("path", pingEndpoint).Msg("register")
+	zerolog.Ctx(ctx).Debug().Str("method", http.MethodGet).Str("path", pingEndpoint).Msg("register")
 	s.router.Handle(
 		pingEndpoint,
 		func() http.HandlerFunc {
@@ -156,7 +154,7 @@ func (s *Server) addDefaultHandlers(recorder Recorder) {
 		}(),
 	).Methods(http.MethodGet)
 
-	s.log.Debug().Str("method", http.MethodGet).Str("path", versionEndpoint).Msg("register")
+	zerolog.Ctx(ctx).Debug().Str("method", http.MethodGet).Str("path", versionEndpoint).Msg("register")
 	s.router.Handle(
 		versionEndpoint,
 		func() http.HandlerFunc {
@@ -171,7 +169,7 @@ func (s *Server) addDefaultHandlers(recorder Recorder) {
 		}(),
 	).Methods(http.MethodGet)
 
-	s.log.Debug().Str("method", http.MethodGet).Str("path", metricsEndpoint).Msg("register")
+	zerolog.Ctx(ctx).Debug().Str("method", http.MethodGet).Str("path", metricsEndpoint).Msg("register")
 	s.router.Handle(
 		pingEndpoint,
 		func() http.HandlerFunc {
@@ -190,6 +188,6 @@ func (s *Server) addDefaultHandlers(recorder Recorder) {
 		}(),
 	).Methods(http.MethodGet)
 
-	s.log.Debug().Str("method", http.MethodGet).Str("path", healthEndpoint).Msg("register")
+	zerolog.Ctx(ctx).Debug().Str("method", http.MethodGet).Str("path", healthEndpoint).Msg("register")
 	s.router.Handle(healthEndpoint, s.healthCheckHandler()).Methods(http.MethodGet)
 }

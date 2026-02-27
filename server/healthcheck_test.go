@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/b-sea/go-server/server"
-	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -105,7 +104,7 @@ func TestServerHealth(t *testing.T) {
 				options = append(options, test.option)
 			}
 
-			testServer := httptest.NewServer(server.New(zerolog.Nop(), &server.NoOpRecorder{}, options...))
+			testServer := httptest.NewServer(server.New(context.Background(), &server.NoOpRecorder{}, options...))
 
 			endpoint := testServer.URL + test.url
 			request, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, nil)
@@ -184,7 +183,7 @@ func TestDependencyHealth(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
-			testServer := httptest.NewServer(server.New(zerolog.Nop(), &server.NoOpRecorder{}, test.option))
+			testServer := httptest.NewServer(server.New(context.Background(), &server.NoOpRecorder{}, test.option))
 
 			endpoint := testServer.URL + test.url
 			request, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, nil)

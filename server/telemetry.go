@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -37,7 +38,7 @@ func (w *telemetryWriter) Write(p []byte) (int, error) {
 	return w.ResponseWriter.Write(p) //nolint: wrapcheck
 }
 
-func (s *Server) telemetryMiddleware(recorder Recorder) mux.MiddlewareFunc {
+func (s *Server) telemetryMiddleware(recorder Recorder) mux.MiddlewareFunc { //nolint: funlen
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			start := time.Now()
@@ -53,7 +54,9 @@ func (s *Server) telemetryMiddleware(recorder Recorder) mux.MiddlewareFunc {
 				Size:           0,
 			}
 
-			defer func() {
+			defer func(ctx context.Context) {
+				log := zerolog.Ctx(ctx)
+
 				panicked := recover()
 				if panicked != nil {
 					err, ok := panicked.(error)
@@ -62,12 +65,12 @@ func (s *Server) telemetryMiddleware(recorder Recorder) mux.MiddlewareFunc {
 					}
 
 					hijack.WriteHeader(http.StatusInternalServerError)
-					s.log.Error().Stack().Err(errors.Wrap(err, "panic")).Send()
+					log.Error().Stack().Err(errors.Wrap(err, "panic")).Send()
 				}
 
 				duration := time.Since(start)
 
-				s.log.Info().
+				log.Info().
 					Str("method", request.Method).
 					Str("url", request.URL.RequestURI()).
 					Str("user_agent", request.UserAgent()).
@@ -78,7 +81,7 @@ func (s *Server) telemetryMiddleware(recorder Recorder) mux.MiddlewareFunc {
 
 				recorder.ObserveHTTPRequestDuration(request.Method, path, hijack.StatusCode, duration)
 				recorder.ObserveHTTPResponseSize(request.Method, path, hijack.StatusCode, int64(hijack.Size))
-			}()
+			}(request.Context())
 
 			// Ensure the correlation ID is set up and passed through
 			correlationID := ""
@@ -91,12 +94,14 @@ func (s *Server) telemetryMiddleware(recorder Recorder) mux.MiddlewareFunc {
 				correlationID = s.newCorrelationID()
 			}
 
+			log := zerolog.Ctx(request.Context())
+
 			hijack.Header().Add(correlationHeader, correlationID)
-			s.log.UpdateContext(func(c zerolog.Context) zerolog.Context {
+			log.UpdateContext(func(c zerolog.Context) zerolog.Context {
 				return c.Str("correlation_id", correlationID)
 			})
 
-			next.ServeHTTP(hijack, request.WithContext(s.log.WithContext(request.Context())))
+			next.ServeHTTP(hijack, request.WithContext(log.WithContext(request.Context())))
 		})
 	}
 }
