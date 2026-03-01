@@ -16,39 +16,39 @@ import (
 
 func TestSetVersion(t *testing.T) {
 	testServer := server.New(context.Background(), &server.NoOpRecorder{})
-	server.SetVersion("")(context.Background(), testServer)
+	server.WithVersion("")(context.Background(), testServer)
 	assert.Equal(t, "", testServer.Version())
 
-	server.SetVersion("special-test-version")(context.Background(), testServer)
+	server.WithVersion("special-test-version")(context.Background(), testServer)
 	assert.Equal(t, "special-test-version", testServer.Version())
 }
 
 func TestSetPort(t *testing.T) {
 	testServer := server.New(context.Background(), &server.NoOpRecorder{})
-	server.SetPort(5000)(context.Background(), testServer)
+	server.WithPort(5000)(context.Background(), testServer)
 	assert.Equal(t, ":5000", testServer.Addr())
 
-	server.SetPort(4567)(context.Background(), testServer)
+	server.WithPort(4567)(context.Background(), testServer)
 	assert.Equal(t, ":4567", testServer.Addr())
 }
 
 func TestSetReadTimeout(t *testing.T) {
 	testServer := server.New(context.Background(), &server.NoOpRecorder{})
-	server.SetReadTimeout(time.Hour)(context.Background(), testServer)
+	server.WithReadTimeout(time.Hour)(context.Background(), testServer)
 	assert.Equal(t, time.Hour, testServer.ReadTimeout())
 
 	testServer = server.New(context.Background(), &server.NoOpRecorder{})
-	server.SetReadTimeout(5*time.Second)(context.Background(), testServer)
+	server.WithReadTimeout(5*time.Second)(context.Background(), testServer)
 	assert.Equal(t, 5*time.Second, testServer.ReadTimeout())
 }
 
 func TestSetWriteTimeout(t *testing.T) {
 	testServer := server.New(context.Background(), &server.NoOpRecorder{})
-	server.SetWriteTimeout(time.Hour)(context.Background(), testServer)
+	server.WithWriteTimeout(time.Hour)(context.Background(), testServer)
 	assert.Equal(t, time.Hour, testServer.WriteTimeout())
 
 	testServer = server.New(context.Background(), &server.NoOpRecorder{})
-	server.SetWriteTimeout(5*time.Second)(context.Background(), testServer)
+	server.WithWriteTimeout(5*time.Second)(context.Background(), testServer)
 	assert.Equal(t, 5*time.Second, testServer.WriteTimeout())
 }
 
@@ -87,7 +87,7 @@ func TestReadCorrelationHeader(t *testing.T) {
 		server.New(
 			zerolog.New(&buffer).WithContext(context.Background()),
 			&server.NoOpRecorder{},
-			server.ReadCorrelationHeader(),
+			server.WithReadCorrelationHeader(),
 		),
 	)
 
