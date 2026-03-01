@@ -12,8 +12,8 @@ import (
 // Option is a creation option for a Server.
 type Option func(ctx context.Context, server *Server)
 
-// SetVersion sets the server version.
-func SetVersion(version string) Option {
+// WithVersion sets the server version.
+func WithVersion(version string) Option {
 	return func(_ context.Context, server *Server) {
 		if version == "" {
 			return
@@ -23,8 +23,8 @@ func SetVersion(version string) Option {
 	}
 }
 
-// SetPort overrides the port used by the Server.
-func SetPort(port int) Option {
+// WithPort overrides the port used by the Server.
+func WithPort(port int) Option {
 	return func(_ context.Context, server *Server) {
 		if port == defaultPort {
 			return
@@ -34,8 +34,8 @@ func SetPort(port int) Option {
 	}
 }
 
-// SetReadTimeout overrides the HTTP read and read header timeouts for the Server.
-func SetReadTimeout(duration time.Duration) Option {
+// WithReadTimeout overrides the HTTP read and read header timeouts for the Server.
+func WithReadTimeout(duration time.Duration) Option {
 	return func(_ context.Context, server *Server) {
 		if duration == defaultTimeout {
 			return
@@ -46,8 +46,8 @@ func SetReadTimeout(duration time.Duration) Option {
 	}
 }
 
-// SetWriteTimeout overrides the HTTP write timeout for the Server.
-func SetWriteTimeout(duration time.Duration) Option {
+// WithWriteTimeout overrides the HTTP write timeout for the Server.
+func WithWriteTimeout(duration time.Duration) Option {
 	return func(_ context.Context, server *Server) {
 		if duration == defaultTimeout {
 			return
@@ -57,8 +57,8 @@ func SetWriteTimeout(duration time.Duration) Option {
 	}
 }
 
-// ReadCorrelationHeader will allow the service to read a correlation ID from a request header.
-func ReadCorrelationHeader() Option {
+// WithReadCorrelationHeader will allow the service to read a correlation ID from a request header.
+func WithReadCorrelationHeader() Option {
 	return func(_ context.Context, server *Server) {
 		server.readCorrelationHeader = true
 	}
@@ -71,8 +71,8 @@ func WithCustomCorrelationID(fn func() string) Option {
 	}
 }
 
-// AddHealthDependency adds a sub system to include during server healthchecks.
-func AddHealthDependency(name string, checker HealthChecker) Option {
+// WithHealthDependency adds a sub system to include during server healthchecks.
+func WithHealthDependency(name string, checker HealthChecker) Option {
 	return func(ctx context.Context, server *Server) {
 		zerolog.Ctx(ctx).Debug().Str("name", name).Msg("register health dependency")
 

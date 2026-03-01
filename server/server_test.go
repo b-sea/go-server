@@ -31,7 +31,7 @@ func findOpenPort(t *testing.T) int {
 }
 
 func TestServerStartStop(t *testing.T) {
-	testServer := server.New(context.Background(), &server.NoOpRecorder{}, server.SetPort(findOpenPort(t)))
+	testServer := server.New(context.Background(), &server.NoOpRecorder{}, server.WithPort(findOpenPort(t)))
 
 	timer := time.NewTimer(500 * time.Millisecond)
 
@@ -99,7 +99,7 @@ func TestServerPing(t *testing.T) {
 }
 
 func TestServerVersion(t *testing.T) {
-	testServer := httptest.NewServer(server.New(context.Background(), &server.NoOpRecorder{}, server.SetVersion("test-123")))
+	testServer := httptest.NewServer(server.New(context.Background(), &server.NoOpRecorder{}, server.WithVersion("test-123")))
 
 	request, _ := http.NewRequestWithContext(
 		context.Background(),
