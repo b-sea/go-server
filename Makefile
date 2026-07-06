@@ -27,6 +27,8 @@ lint: setup-lint
 	@${GOLANGCILINT_PATH}/golangci-lint cache clean
 	@${GOLANGCILINT_PATH}/golangci-lint run -c tools/.golangci.yml
 
-
-gqlgen:
-	@go run github.com/99designs/gqlgen generate --config tools/gqlgen.yml
+openapi:
+	@go get -tool github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+	@go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen \
+		--config=tools/oapi-codegen.yaml \
+		api/api.yml

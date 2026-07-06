@@ -1,0 +1,106 @@
+---
+openapi: 3.1.1
+
+info:
+  title: 
+  description:
+  version: 
+
+paths:
+  /ping:
+    get:
+      operationId: Ping
+      summary: Get service aliveness
+      description:
+      tags:
+        - utilities
+      responses:
+        '200':
+          description: The service is alive
+          content:
+            application/json:
+              schema:
+                type: string
+  /health:
+    get:
+      operationId: Health
+      summary: Get service healthiness
+      description: 
+      tags:
+        - utilities
+      responses:
+        '200':
+          description: The service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '500':
+          description: The service is unhealthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /version:
+    get:
+      operationId: Version
+      summary: Get service version
+      description: 
+      tags:
+        - utilities
+      responses:
+        '200':
+          description: The service version
+          content:
+            application/json:
+              schema:
+                type: string
+  /metrics:
+    get:
+      operationId: Metrics 
+      summary:
+      description:
+      tags:
+        - utilities
+      responses:
+        '200':
+          description: The service version
+          content:
+            text/plain:
+              schema:
+                type: string
+
+components:
+  schemas:
+    HealthResponse:
+      properties:
+        status:
+          $ref: '#/components/schemas/HealthStatus'
+          x-order: 0
+        dependencies:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/CheckResponse'
+          x-order: 1
+      required:
+        - status
+        - dependencies
+    CheckResponse:
+      properties:
+        status:
+          $ref: '#/components/schemas/HealthStatus'
+          x-order: 0
+        message:
+          type: string
+          x-order: 1
+        duration_ms:
+          type: integer
+          x-go-name: DurationMS
+          x-order: 2
+      required:
+        - status
+        - message
+        - duration_ms
+    HealthStatus:
+      type: string
+      enum: [healthy, unhealthy]

@@ -20,7 +20,10 @@ linters:
       ignore-names:
         - id
         - r
+        - w
         - i
+        - wg
+        - c
 
 issues:
   max-issues-per-linter: 0
