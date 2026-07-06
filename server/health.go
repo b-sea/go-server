@@ -182,7 +182,7 @@ func (s *HealthService) CheckHealth(ctx context.Context) HealthResult {
 	return health
 }
 
-func HealthHandler(service HealthService) http.HandlerFunc {
+func HealthHandler(service *HealthService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/json")
 
