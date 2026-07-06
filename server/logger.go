@@ -9,8 +9,8 @@ type ContextHandler struct {
 	slog.Handler
 }
 
-func NewContextHandler(handler slog.Handler) ContextHandler {
-	return ContextHandler{handler}
+func NewContextHandler(handler slog.Handler) *ContextHandler {
+	return &ContextHandler{handler}
 }
 
 func (h *ContextHandler) Handle(ctx context.Context, r slog.Record) error {

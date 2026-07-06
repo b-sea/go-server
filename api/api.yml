@@ -1,11 +1,6 @@
 ---
 openapi: 3.1.1
 
-info:
-  title: 
-  description:
-  version: 
-
 paths:
   /ping:
     get:
