@@ -46,7 +46,7 @@ paths:
       summary: /version
       description: Get service version
       tags:
-        - utilities
+        - Utilities
       responses:
         '200':
           description: The service version
@@ -60,7 +60,7 @@ paths:
       summary: /metrics
       description:
       tags:
-        - utilities
+        - Utilities
       responses:
         '200':
           description: The service version
