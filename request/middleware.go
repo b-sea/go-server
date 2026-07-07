@@ -1,4 +1,4 @@
-package server
+package request
 
 import (
 	"context"
@@ -20,7 +20,7 @@ func NewCorrelationID() string {
 	return uuid.NewString()
 }
 
-func CorrelationID(newCorrelationID func() string) func(http.Handler) http.Handler {
+func CorrelationIDMiddleware(newCorrelationID func() string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			correlationID := r.Header.Get(correlationHeader)
@@ -56,7 +56,7 @@ func (w *sizeCodeWriter) Write(p []byte) (int, error) {
 	return w.ResponseWriter.Write(p) //nolint: wrapcheck
 }
 
-func RequestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
+func LoggerMiddleware(logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			hijack := &sizeCodeWriter{
@@ -81,12 +81,12 @@ func RequestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-type RequestRecorder interface {
+type Recorder interface {
 	ObserveHTTPRequestDuration(method string, path string, code int, seconds float64)
 	ObserveHTTPResponseSize(method string, path string, code int, bytes int64)
 }
 
-func RequestMetrics(recorder RequestRecorder) func(http.Handler) http.Handler {
+func MetricsMiddleware(recorder Recorder) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			hijack := &sizeCodeWriter{

@@ -1,13 +1,13 @@
-package server
+package handler
 
 import (
 	"encoding/json"
 	"net/http"
 )
 
-func VersionHandler(version string) http.HandlerFunc {
+func Ping() http.HandlerFunc {
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Add("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(version)
+		_ = json.NewEncoder(w).Encode("pong")
 	}
 }

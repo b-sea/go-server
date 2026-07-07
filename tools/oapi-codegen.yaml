@@ -1,9 +1,10 @@
 ---
-package: server
-output: server/model.gen.go
+package: oapi
+output: server/oapi/model.gen.go
 
 generate:
   models: true
+  std-http-server: true
 
 output-options:
   name-normalizer: ToCamelCaseWithInitialisms

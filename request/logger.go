@@ -1,4 +1,4 @@
-package server
+package request
 
 import (
 	"context"
@@ -15,7 +15,7 @@ func NewContextHandler(handler slog.Handler) *ContextHandler {
 
 func (h *ContextHandler) Handle(ctx context.Context, r slog.Record) error {
 	if correlationID, ok := ctx.Value(correlationKey).(string); ok {
-		r.Add(slog.String("correlation_id", string(correlationID)))
+		r.Add(slog.String("correlation_id", correlationID))
 	}
 
 	return h.Handler.Handle(ctx, r) //nolint: wrapcheck
