@@ -46,18 +46,18 @@ type HealthStatus string
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Get service healthiness
+	// /health
 	// (GET /health)
-	Health(w http.ResponseWriter, r *http.Request)
-
+	GetHealth(w http.ResponseWriter, r *http.Request)
+	// /metrics
 	// (GET /metrics)
-	Metrics(w http.ResponseWriter, r *http.Request)
-	// Get service aliveness
+	GetMetrics(w http.ResponseWriter, r *http.Request)
+	// /ping
 	// (GET /ping)
-	Ping(w http.ResponseWriter, r *http.Request)
-	// Get service version
+	GetPing(w http.ResponseWriter, r *http.Request)
+	// /version
 	// (GET /version)
-	Version(w http.ResponseWriter, r *http.Request)
+	GetVersion(w http.ResponseWriter, r *http.Request)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -69,11 +69,11 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
-// Health operation middleware
-func (siw *ServerInterfaceWrapper) Health(w http.ResponseWriter, r *http.Request) {
+// GetHealth operation middleware
+func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.Health(w, r)
+		siw.Handler.GetHealth(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -83,11 +83,11 @@ func (siw *ServerInterfaceWrapper) Health(w http.ResponseWriter, r *http.Request
 	handler.ServeHTTP(w, r)
 }
 
-// Metrics operation middleware
-func (siw *ServerInterfaceWrapper) Metrics(w http.ResponseWriter, r *http.Request) {
+// GetMetrics operation middleware
+func (siw *ServerInterfaceWrapper) GetMetrics(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.Metrics(w, r)
+		siw.Handler.GetMetrics(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -97,11 +97,11 @@ func (siw *ServerInterfaceWrapper) Metrics(w http.ResponseWriter, r *http.Reques
 	handler.ServeHTTP(w, r)
 }
 
-// Ping operation middleware
-func (siw *ServerInterfaceWrapper) Ping(w http.ResponseWriter, r *http.Request) {
+// GetPing operation middleware
+func (siw *ServerInterfaceWrapper) GetPing(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.Ping(w, r)
+		siw.Handler.GetPing(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -111,11 +111,11 @@ func (siw *ServerInterfaceWrapper) Ping(w http.ResponseWriter, r *http.Request) 
 	handler.ServeHTTP(w, r)
 }
 
-// Version operation middleware
-func (siw *ServerInterfaceWrapper) Version(w http.ResponseWriter, r *http.Request) {
+// GetVersion operation middleware
+func (siw *ServerInterfaceWrapper) GetVersion(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.Version(w, r)
+		siw.Handler.GetVersion(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -245,10 +245,10 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/health", wrapper.Health)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/metrics", wrapper.Metrics)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/ping", wrapper.Ping)
-	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/version", wrapper.Version)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/health", wrapper.GetHealth)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/metrics", wrapper.GetMetrics)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/ping", wrapper.GetPing)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/version", wrapper.GetVersion)
 
 	return m
 }

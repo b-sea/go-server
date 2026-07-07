@@ -1,14 +1,18 @@
 ---
 openapi: 3.1.1
 
+tags:
+  - name: Utilities
+    description: Endpoints used for health, aliveness, and other utility purposes.
+
 paths:
   /ping:
     get:
-      operationId: Ping
-      summary: Get service aliveness
-      description:
+      operationId: GetPing
+      summary: /ping
+      description: Get service aliveness
       tags:
-        - utilities
+        - Utilities
       responses:
         '200':
           description: The service is alive
@@ -18,11 +22,11 @@ paths:
                 type: string
   /health:
     get:
-      operationId: Health
-      summary: Get service healthiness
-      description: 
+      operationId: GetHealth
+      summary: /health
+      description: Get service healthiness
       tags:
-        - utilities
+        - Utilities
       responses:
         '200':
           description: The service is healthy
@@ -38,9 +42,9 @@ paths:
                 $ref: '#/components/schemas/HealthResponse'
   /version:
     get:
-      operationId: Version
-      summary: Get service version
-      description: 
+      operationId: GetVersion
+      summary: /version
+      description: Get service version
       tags:
         - utilities
       responses:
@@ -52,8 +56,8 @@ paths:
                 type: string
   /metrics:
     get:
-      operationId: Metrics 
-      summary:
+      operationId: GetMetrics 
+      summary: /metrics
       description:
       tags:
         - utilities

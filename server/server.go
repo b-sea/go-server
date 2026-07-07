@@ -35,18 +35,18 @@ func New(version string, health *health.Service, recorder Recorder, logger *slog
 	}
 }
 
-func (s *Server) Ping(writer http.ResponseWriter, request *http.Request) {
+func (s *Server) GetPing(writer http.ResponseWriter, request *http.Request) {
 	handler.Ping().ServeHTTP(writer, request)
 }
 
-func (s *Server) Health(writer http.ResponseWriter, request *http.Request) {
+func (s *Server) GetHealth(writer http.ResponseWriter, request *http.Request) {
 	handler.Health(s.health).ServeHTTP(writer, request)
 }
 
-func (s *Server) Version(writer http.ResponseWriter, request *http.Request) {
+func (s *Server) GetVersion(writer http.ResponseWriter, request *http.Request) {
 	handler.Version(s.version).ServeHTTP(writer, request)
 }
 
-func (s *Server) Metrics(writer http.ResponseWriter, request *http.Request) {
+func (s *Server) GetMetrics(writer http.ResponseWriter, request *http.Request) {
 	s.recorder.Handler().ServeHTTP(writer, request)
 }
