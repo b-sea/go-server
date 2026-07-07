@@ -41,8 +41,8 @@ func (c *loggingChecker) HealthCheck(ctx context.Context) CheckResult {
 }
 
 type Recorder interface {
-	SetStatus(name string, status float64)
-	ObserveDuration(name string, seconds float64)
+	SetHealthStatus(name string, status float64)
+	ObserveHealthDuration(name string, seconds float64)
 }
 
 type metricsChecker struct {
@@ -54,14 +54,14 @@ type metricsChecker struct {
 func (c *metricsChecker) HealthCheck(ctx context.Context) CheckResult {
 	result := c.Checker.HealthCheck(ctx)
 
-	c.recorder.ObserveDuration(c.HealthLabel(), result.Duration.Seconds())
+	c.recorder.ObserveHealthDuration(c.HealthLabel(), result.Duration.Seconds())
 
 	status := 0.0
 	if result.Status == StatusHealthy {
 		status = 1.0
 	}
 
-	c.recorder.SetStatus(c.HealthLabel(), status)
+	c.recorder.SetHealthStatus(c.HealthLabel(), status)
 
 	return result
 }
