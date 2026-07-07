@@ -29,7 +29,7 @@ func (c *loggingChecker) HealthCheck(ctx context.Context) CheckResult {
 
 	if c.lastStatus != result.Status {
 		c.logger.With(
-			slog.String("before", string(c.lastStatus)),
+			slog.String("previous", string(c.lastStatus)),
 			slog.String("current", string(result.Status)),
 			slog.Int("duration_ms", int(result.Duration.Milliseconds())),
 		).InfoContext(ctx, "health status changed")
